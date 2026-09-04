@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment / secrets — never commit the real .env
+.env
+*.env
+!.env.example
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Uploaded student documents
+uploads/*
+!uploads/.gitkeep
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
