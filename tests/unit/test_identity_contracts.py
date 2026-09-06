@@ -121,7 +121,7 @@ def test_schema_head_contract_matches_alembic_graph():
 
     script = ScriptDirectory.from_config(Config(str(BASE_DIR / "alembic.ini")))
     assert script.get_heads() == [SCHEMA_HEAD]
-    assert script.get_revision(SCHEMA_HEAD).down_revision == "ca98ebed8d42"
+    assert script.get_revision(SCHEMA_HEAD).down_revision == "d2a5c19f0b72"
 
 
 def test_no_password_option_in_bootstrap_cli():

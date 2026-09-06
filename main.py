@@ -10,7 +10,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from app.api.v1 import auth, users
+from app.api.v1 import auth, users, admissions
+from app.web.routes import router as web_router
+from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import AppError
 from app.core.schema_version import SCHEMA_HEAD
 from app.core.config import ensure_directories, settings
@@ -89,9 +91,12 @@ async def private_api_responses(request: Request, call_next):
     return response
 
 
-# Identity APIs only; housing workflows remain separate.
+# Identity + admissions APIs and the local-asset web portal.
+app.add_middleware(BodyLimitMiddleware)
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
+app.include_router(admissions.router, prefix=settings.API_V1_STR)
+app.include_router(web_router)
 
 
 @app.get("/health", tags=["System"])
@@ -134,6 +139,10 @@ def readiness():
                 ("auth_sessions", "session_id"),
                 ("audit_events", "event_id"),
                 ("login_rate_buckets", "bucket_key"),
+                ("applications", "version"),
+                ("students", "profile_version"),
+                ("application_documents", "content_type"),
+                ("application_events", "event_id"),
             ]:
                 connection.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
         ready = versions == [SCHEMA_HEAD] and guard == 1
@@ -152,6 +161,7 @@ def root():
         "message": "Welcome to Smart Student Housing Management System - سكن بازرعة الطلابي",
         "docs_url": "/docs" if settings.DEBUG else None,
         "health_check": "/health",
+        "portal": "/app",
     }
 
 

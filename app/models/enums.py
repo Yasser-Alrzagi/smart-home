@@ -29,6 +29,7 @@ class HousingStatus(str, enum.Enum):
     academic_break = "Academic Break"
     suspended = "Suspended"
     terminated = "Terminated"
+    applicant = "Applicant"
 
 
 class ApplicationStatus(str, enum.Enum):
@@ -38,6 +39,7 @@ class ApplicationStatus(str, enum.Enum):
     pending_documents = "Pending Documents"
     accepted = "Accepted"
     rejected = "Rejected"
+    ready_for_decision = "Ready for Decision"
 
 
 class RoomStatus(str, enum.Enum):
@@ -133,7 +135,6 @@ class DocumentType(str, enum.Enum):
 # Documents a student must attach before an application may leave Draft.
 REQUIRED_DOCUMENT_TYPES = (
     DocumentType.national_id,
-    DocumentType.university_id,
     DocumentType.enrollment_certificate,
 )
 

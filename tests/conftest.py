@@ -85,7 +85,7 @@ def isolated_identity_state(request):
         yield
         return
     from sqlalchemy import delete, select
-    from app.models import AuditEvent, AuthSession, LoginRateBucket, User
+    from app.models import ApplicationEvent, AuditEvent, AuthSession, LoginRateBucket, User
     with engine.begin() as conn:
         before = set(conn.execute(select(User.user_id)).scalars())
         conn.execute(delete(LoginRateBucket))
@@ -94,6 +94,7 @@ def isolated_identity_state(request):
     finally:
         with engine.begin() as conn:
             new_ids = set(conn.execute(select(User.user_id)).scalars()) - before
+            conn.execute(delete(ApplicationEvent))
             conn.execute(delete(AuditEvent))
             conn.execute(delete(AuthSession))
             conn.execute(delete(LoginRateBucket))

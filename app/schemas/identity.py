@@ -76,7 +76,17 @@ class UserPage(BaseModel):
 class UTCResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    @field_serializer("created_at", "expires_at", "revoked_at", check_fields=False)
+    @field_serializer(
+        "created_at",
+        "expires_at",
+        "revoked_at",
+        "updated_at",
+        "application_date",
+        "submitted_at",
+        "decision_date",
+        "review_completed_at",
+        check_fields=False,
+    )
     def utc_dates(self, value):
         return (
             None

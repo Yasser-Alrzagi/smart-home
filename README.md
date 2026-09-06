@@ -1,11 +1,39 @@
 # Smart Student Housing — سكن بازرعة الطلابي
 
-**D1 foundation + D2 identity/account administration are implemented locally. This is not a complete housing product.**
+**D1 foundation + D2 identity + D3 two-stage admissions and an initial Arabic UI are implemented. Room allocation and the remaining housing product are still to come.**
 
-- 26 ORM tables: the original 22 domain tables plus 4 identity/security tables.
-- 17 application HTTP operations, including self-service, administrator account management, and health/readiness.
-- No browser UI, public registration, student/application workflow, room allocation service, or BFS/A* implementation yet.
+- 27 ORM tables: domain tables, identity/security, and application history.
+- Identity + admission HTTP APIs, health/readiness, and an Arabic browser portal at `/app`.
+- Student profile, required documents, Student Affairs review and Housing Administration decisions are implemented. No public registration, room-allocation service, or BFS/A* implementation yet.
 - Approved provisioning policy: **only the System Administrator creates accounts and assigns roles**. Other roles manage only their own account/session through self-service endpoints.
+
+## D3: open the Arabic portal
+
+After configuring `.env`, installing the updated runtime requirements and running
+`alembic upgrade head`, start `python main.py` and visit **http://127.0.0.1:8000/app**.
+The API welcome JSON at `/` remains available. No Node/npm build is needed for the UI.
+
+Use the D2 bootstrap tool for a first administrator only. The administrator can create
+Student, Student Affairs and Housing Administration accounts in the portal. Newly created
+accounts must change their temporary password before performing normal work.
+
+Approved policy: **Student Affairs reviews; Housing Administration decides**. Only National
+ID and enrollment certificate are mandatory initially; university ID is optional. Staff may
+request specific additional documents with a reason. Approval is not room allocation.
+
+The new revision is `d3b7a21c8f04`, based on the published D2 main commit `249bc91`.
+It preserves historical migrations, adds application history/versioning/snapshots and private
+DB document content. New student profiles start as Applicant. D3 downgrade refuses D3 data;
+never use downgrade as a production recovery shortcut.
+
+Documents are stored as private DB blobs, not public file paths, and committed with their
+metadata/history. Default max 5 MiB/file; PDF/JPEG/PNG only. Images are re-encoded; PDFs are
+bounded and active/encrypted files rejected. This is not antivirus or authenticity checking.
+DB/backup encryption and TLS remain deployment responsibilities. The legacy UPLOAD_DIR is
+not used to expose these documents. See **[D3 policy and operations](docs/admissions-d3.md)**.
+
+The UI keeps its token in page memory, never localStorage/sessionStorage/cookies. Reloading
+requires login again. There are no seeded production/demo credentials in the archive.
 
 ## Stack and layout
 
@@ -103,7 +131,7 @@ Never put tokens in URLs. Login is form-encoded username/password, not a JSON bo
 | GET | `/audit-events` | System Administrator only |
 
 `/`, `/health`, `/ready` are public system operations. `/health` checks connectivity;
-`/ready` checks the expected schema revision, singleton guard, and identity tables/columns.
+`/ready` checks the expected schema revision, singleton guard, and identity/admission tables/columns.
 A ready identity backend is not a claim that housing workflows or deployment safety are complete.
 
 No public registration and no account DELETE endpoint. The administrator cannot demote/
@@ -202,7 +230,28 @@ CI is configured in `.github/workflows/tests.yml` for Python 3.12/3.13 with disp
 11.8.6, locked installs, Ruff, and real migration cycles. Local test results are not a claim of
 an executed GitHub Actions run; no remote push has been performed by the assistant.
 
+### Real browser regression
+
+For the same explicitly configured disposable TEST_DATABASE_URL, after upgrading its schema:
+
+```text
+python -m playwright install chromium
+python -m tools.ui_smoke
+```
+
+On Linux, browser OS dependencies may require `python -m playwright install --with-deps chromium`.
+This test creates temporary synthetic users, runs a real three-role workflow with two documents,
+checks download/XSS/mobile/session-storage behavior, and cleans its data. It starts and stops a
+local test server itself. Screenshots go to ignored `artifacts/ui/` by default.
+
+CI runs this browser test on Python 3.13 in addition to backend tests on both versions. Actions
+are pinned to official Node 24 commits to replace the older Node 20 warning-generating actions.
+The assistant has not run the new D3 workflow on GitHub or pushed this branch.
+
 ## Project documentation
+
+- [D3 admission policy and UI — Arabic](docs/admissions-d3.md)
+- [D3 tested delivery results — Arabic](docs/d3-results.md)
 
 - [Database and migration design](docs/database.md)
 - [D2 account/session policy — Arabic](docs/identity-policy.md)
@@ -211,4 +260,4 @@ an executed GitHub Actions run; no remote push has been performed by the assista
 
 Historical generator text and `_offline_head.sql` are not active migrations. The old assembler
 refuses to overwrite revisions; its source is archived as non-executable text under
-`alembic/superseded/`. Student/application/document/housing services and their UI are next (D3+).
+`alembic/superseded/`. Room allocation/transfers are next (D4); services and AI follow later.

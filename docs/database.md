@@ -24,7 +24,7 @@
 | 5 | Mandatory application documents: National ID, University ID, Enrollment Certificate |
 | 6 | Existing enumeration value sets approved unchanged |
 
-**Current total tables: 26** — the original 22 plus four technical identity/security tables added by D2.
+**Current total tables: 27** — original domain tables, D2 identity security, and D3 application history.
 
 ## 3. Table Inventory
 
@@ -63,15 +63,16 @@
 #### `students`
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| `student_id` | VARCHAR(36) | NO | uuid4 | PK |
-| `user_id` | VARCHAR(36) | NO | — | FK `users` CASCADE, UNIQUE index |
-| `full_name` | VARCHAR(200) | NO | — | |
-| `university` | VARCHAR(200) | NO | — | |
-| `major` | VARCHAR(200) | NO | — | |
-| `academic_status` | ENUM(academic_status) | NO | continuing | |
-| `housing_status` | ENUM(housing_status) | NO | active | |
-| `created_at` | DATETIME | NO | utcnow | |
-| `updated_at` | DATETIME | NO | utcnow | on update |
+| `student_id` | VARCHAR(36) | NO | application default | PK |
+| `user_id` | VARCHAR(36) | NO | — | FK `users` CASCADE, index, unique |
+| `full_name` | VARCHAR(200) | NO | — |  |
+| `university` | VARCHAR(200) | NO | — |  |
+| `major` | VARCHAR(200) | NO | — |  |
+| `academic_status` | ENUM('continuing','graduating','postgraduate','completed') | NO | application default |  |
+| `housing_status` | ENUM('active','academic_break','suspended','terminated','applicant') | NO | application default |  |
+| `created_at` | DATETIME | NO | application default |  |
+| `updated_at` | DATETIME | NO | application default |  |
+| `profile_version` | INTEGER | NO | 1 | optimistic concurrency; CHECK >= 1 |
 
 #### `student_status_history`
 | Column | Type | Null | Default | Notes |
@@ -91,25 +92,33 @@
 #### `applications`
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| `application_id` | VARCHAR(36) | NO | uuid4 | PK |
+| `application_id` | VARCHAR(36) | NO | application default | PK |
 | `student_id` | VARCHAR(36) | NO | — | FK `students` CASCADE, index |
-| `application_date` | DATETIME | NO | utcnow | |
-| `status` | ENUM(application_status) | NO | draft | |
-| `decision_date` | DATETIME | YES | — | |
-| `decision_notes` | TEXT | YES | — | |
+| `application_date` | DATETIME | NO | application default |  |
+| `status` | ENUM('draft','submitted','under_review','pending_documents','accepted','rejected','ready_for_decision') | NO | application default |  |
+| `decision_date` | DATETIME | YES | — |  |
+| `decision_notes` | TEXT | YES | — |  |
 | `reviewed_by` | VARCHAR(36) | YES | — | FK `users` SET NULL |
+| `version` | INTEGER | NO | 1 | optimistic concurrency; CHECK >= 1 |
+| `submitted_at` | DATETIME | YES | — |  |
+| `review_completed_at` | DATETIME | YES | — |  |
+| `prechecked_by` | VARCHAR(36) | YES | — | FK `users` SET NULL |
+| `review_notes` | TEXT | YES | — |  |
+| `requested_documents` | TEXT | NO | '[]' |  |
+| `profile_snapshot` | TEXT | YES | — |  |
 
 #### `application_documents`
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| `document_id` | VARCHAR(36) | NO | uuid4 | PK |
+| `document_id` | VARCHAR(36) | NO | application default | PK |
 | `application_id` | VARCHAR(36) | NO | — | FK `applications` CASCADE, index |
-| `document_type` | ENUM(document_type) | NO | — | |
-| `file_path` | VARCHAR(500) | NO | — | relative to `UPLOAD_DIR` |
-| `uploaded_at` | DATETIME | NO | utcnow | |
-
-Mandatory before an application may leave `Draft` (decision 5):
-`national_id`, `university_id`, `enrollment_certificate`.
+| `document_type` | ENUM('national_id','university_id','academic_transcript','enrollment_certificate','medical_certificate','other') | NO | — |  |
+| `file_path` | VARCHAR(500) | NO | — | legacy locator; D3 uses db:UUID and never opens this as a filesystem path |
+| `uploaded_at` | DATETIME | NO | application default |  |
+| `content` | MEDIUMBLOB | YES | — | private DB blob; deferred loading; never included in JSON |
+| `content_type` | VARCHAR(100) | YES | — |  |
+| `size_bytes` | INTEGER | YES | — |  |
+| `sha256` | VARCHAR(64) | YES | — |  |
 
 ### 4.4 Housing
 
@@ -352,6 +361,22 @@ implies an absence") auditable.
 | `attempts` | INTEGER | NO | — | CHECK >= 0 |
 | `expires_at` | DATETIME | NO | — | index; eligible for explicit pruning |
 
+### 4.11 Admission history (D3)
+
+#### `application_events`
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `event_id` | VARCHAR(36) | NO | application default | PK |
+| `application_id` | VARCHAR(36) | NO | — | FK `applications` RESTRICT, index |
+| `actor_id` | VARCHAR(36) | NO | — | FK `users` RESTRICT |
+| `actor_role` | VARCHAR(60) | NO | — |  |
+| `action` | VARCHAR(64) | NO | — |  |
+| `from_status` | VARCHAR(40) | YES | — |  |
+| `to_status` | VARCHAR(40) | NO | — |  |
+| `note` | TEXT | YES | — |  |
+| `application_version` | INTEGER | NO | — |  |
+| `created_at` | DATETIME(6) | NO | application default |  |
+
 ## 5. Enumeration Value Sets
 
 Approved unchanged (decision 6). SQLAlchemy stores the **name** column in MySQL.
@@ -360,8 +385,8 @@ Approved unchanged (decision 6). SQLAlchemy stores the **name** column in MySQL.
 |---|---|
 | `user_role` | student, housing_administration, student_affairs, maintenance_officer, activity_officer, cleaning_officer, food_officer, sports_officer, system_administrator |
 | `academic_status` | continuing, graduating, postgraduate, completed |
-| `housing_status` | active, academic_break, suspended, terminated |
-| `application_status` | draft, submitted, under_review, pending_documents, accepted, rejected |
+| `housing_status` | active, academic_break, suspended, terminated, applicant |
+| `application_status` | draft, submitted, under_review, pending_documents, accepted, rejected, ready_for_decision |
 | `document_type` | national_id, university_id, academic_transcript, enrollment_certificate, medical_certificate, other |
 | `status_type` | academic, housing |
 | `room_status` | available, partially_occupied, fully_occupied, maintenance, closed |
@@ -657,3 +682,7 @@ security tables, preserves existing users, and seeds account_guard row 1. D1
 tokens are deliberately invalid under D2. Account hard deletion is blocked by
 application services/repositories; legacy student-owned CASCADE links remain
 unchanged. This is not a claim that a privileged DBA cannot delete data.
+
+## 14. D3 approved admission policy (2026-09-06)
+
+Student Affairs performs review and sends complete requests to Housing Administration for a decision. National ID and enrollment certificate are required; university ID is optional. New profiles start as Applicant, not a housed resident. Approval does not allocate a room. See admissions-d3.md for storage, validation, state/version rules and migration precautions.
