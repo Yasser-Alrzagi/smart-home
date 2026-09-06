@@ -5,9 +5,13 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.repositories.base import BaseRepository
+from app.core.errors import HardDeleteDisabled
 
 
 class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
+    def remove(self, db: Session, *, id):
+        raise HardDeleteDisabled()
+
     def get_by_email(self, db: Session, *, email: str) -> Optional[User]:
         stmt = select(User).where(User.email == email)
         return db.scalar(stmt)

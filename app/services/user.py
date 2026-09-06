@@ -5,6 +5,7 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.repositories.user import user_repo
 from app.core.security import get_password_hash
+from app.services.sessions import revoke_all
 
 class UserService:
     def create(self, db: Session, *, user_in: UserCreate) -> User:
@@ -29,6 +30,11 @@ class UserService:
             password = update_data.pop("password")
             update_data["password_hash"] = get_password_hash(password)
             
+        if "password_hash" in update_data or any(
+            name in update_data and update_data[name] != getattr(db_obj, name)
+            for name in ("role", "is_active")
+        ):
+            revoke_all(db, db_obj)
         return user_repo.update(db, db_obj=db_obj, obj_in=update_data)
         
     def remove(self, db: Session, *, user_id: str) -> Optional[User]:

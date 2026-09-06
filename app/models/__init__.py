@@ -1,7 +1,7 @@
 """
 SQLAlchemy ORM Models package.
 
-All 22 tables are imported here so Alembic and ``Base.metadata`` can discover them.
+All 26 tables are imported here so Alembic and ``Base.metadata`` can discover them.
 Importing this package is the only supported way to populate the metadata; importing
 a single model module leaves the relationship targets unresolved.
 """
@@ -27,7 +27,10 @@ from app.models.services import (                         # noqa: F401
     Notification,
 )
 
+from app.models.identity import AccountGuard, AuthSession, AuditEvent, LoginRateBucket
+
 __all__ = [
+    "AccountGuard", "AuthSession", "AuditEvent", "LoginRateBucket",
     "Base",
     "utcnow",
     # Identity

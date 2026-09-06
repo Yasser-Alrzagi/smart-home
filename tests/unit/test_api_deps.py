@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_current_user, RoleChecker
 from app.core.security import create_access_token
+from app.core.errors import AppError
+from app.services.sessions import issue_session
 from app.models.enums import UserRole
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.user import user_service
@@ -18,23 +20,23 @@ def test_get_current_user_valid_token(db_session: Session):
     )
     user = user_service.create(db_session, user_in=user_in)
     
-    token = create_access_token(subject=user.user_id, role=user.role)
+    token = issue_session(db_session, user)
     
     current_user = get_current_user(db=db_session, token=token)
     assert current_user.user_id == user.user_id
 
 
 def test_get_current_user_invalid_token(db_session: Session):
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         get_current_user(db=db_session, token="invalid.token.here")
-    assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_get_current_user_nonexistent(db_session: Session):
     token = create_access_token(subject="nonexistent_uuid", role=UserRole.student)
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AppError) as exc_info:
         get_current_user(db=db_session, token=token)
-    assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_get_current_active_user(db_session: Session):
@@ -57,8 +59,8 @@ def test_get_current_active_user(db_session: Session):
     # Should fail
     with pytest.raises(HTTPException) as exc_info:
         get_current_active_user(current_user=user)
-    assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
-    assert exc_info.value.detail == "Inactive user"
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert exc_info.value.detail == "Could not validate credentials"
 
 
 def test_role_checker():

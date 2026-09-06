@@ -14,6 +14,7 @@ import app.models as models
 from app.models.base import Base, utcnow
 
 EXPECTED_TABLES = {
+    "account_guard", "auth_sessions", "audit_events", "login_rate_buckets",
     "users",
     "students",
     "student_status_history",
@@ -63,7 +64,7 @@ def test_all_mappers_configure():
 
 def test_metadata_contains_exactly_the_expected_tables():
     assert set(Base.metadata.tables) == EXPECTED_TABLES
-    assert len(Base.metadata.tables) == 22
+    assert len(Base.metadata.tables) == 26
 
 
 @pytest.mark.parametrize("name", sorted(models.__all__))

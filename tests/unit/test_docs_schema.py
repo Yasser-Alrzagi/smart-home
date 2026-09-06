@@ -86,18 +86,21 @@ def test_documented_foreign_keys_match(table_name):
 
 
 def test_documented_enum_value_sets_match_the_python_enums():
-    """Section 5 lists the stored values; SQLAlchemy stores the member names."""
+    """Compare actual ordered values, not just type names (foundation regression)."""
     text = DOC_PATH.read_text(encoding="utf-8")
     section = text.split("## 5. Enumeration Value Sets")[1].split("## 6.")[0]
-    documented = set(re.findall(r"^\| `([a-z_]+)`", section, re.MULTILINE))
-    assert documented, "no enumeration names parsed from section 5"
-
+    documented = {}
+    for line in section.splitlines():
+        if not line.startswith("| `"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        name = cells[0].strip("`").replace("_", "")
+        assert name not in documented, f"duplicate documented enum: {name}"
+        documented[name] = [value.strip() for value in cells[1].split(",")]
     stored = {
-        column.type.name
+        column.type.name: list(column.type.enums)
         for table in Base.metadata.tables.values()
         for column in table.columns
         if getattr(column.type, "enums", None)
     }
-    # Document names are snake_case; SQLAlchemy derives the type name from the class.
-    normalized = {name.replace("_", "") for name in documented}
-    assert stored <= normalized, f"enum types not documented: {stored - normalized}"
+    assert documented == stored

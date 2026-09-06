@@ -24,7 +24,7 @@
 | 5 | Mandatory application documents: National ID, University ID, Enrollment Certificate |
 | 6 | Existing enumeration value sets approved unchanged |
 
-**Total tables: 22** — the 16 from the specification plus the 6 approved above.
+**Current total tables: 26** — the original 22 plus four technical identity/security tables added by D2.
 
 ## 3. Table Inventory
 
@@ -50,11 +50,13 @@
 | `user_id` | VARCHAR(36) | NO | uuid4 | PK |
 | `username` | VARCHAR(80) | NO | — | UNIQUE index |
 | `email` | VARCHAR(255) | NO | — | UNIQUE index |
-| `password_hash` | VARCHAR(255) | NO | — | bcrypt |
+| `password_hash` | VARCHAR(255) | NO | — | Argon2id; bounded legacy bcrypt verification |
 | `role` | ENUM(user_role) | NO | — | one of the 9 roles |
 | `is_active` | BOOLEAN | NO | TRUE | |
 | `created_at` | DATETIME | NO | utcnow | |
 | `updated_at` | DATETIME | NO | utcnow | on update |
+| `auth_version` | INTEGER | NO | 0 | token revocation epoch, CHECK >= 0 |
+| `must_change_password` | BOOLEAN | NO | FALSE | forced after admin provisioning/reset |
 
 ### 4.2 Students
 
@@ -314,6 +316,42 @@ implies an absence") auditable.
 | `created_at` | DATETIME | NO | utcnow | |
 | `read_at` | DATETIME | YES | — | |
 
+### 4.10 D2 identity security
+
+#### `account_guard`
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `guard_id` | INTEGER | NO | migration seed 1 | PK, CHECK = 1; administrative transaction mutex |
+
+#### `auth_sessions`
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `session_id` | VARCHAR(36) | NO | uuid4 | PK, JWT jti |
+| `user_id` | VARCHAR(36) | NO | — | FK `users` RESTRICT, composite index |
+| `token_version` | INTEGER | NO | — | auth epoch when issued |
+| `created_at` | DATETIME(6) | NO | utcnow | |
+| `expires_at` | DATETIME | NO | — | index |
+| `revoked_at` | DATETIME | YES | — | NULL while not revoked |
+
+#### `audit_events`
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `event_id` | VARCHAR(36) | NO | uuid4 | PK |
+| `actor_id` | VARCHAR(36) | YES | — | FK `users` RESTRICT, index |
+| `target_user_id` | VARCHAR(36) | YES | — | FK `users` RESTRICT, index |
+| `actor_role` | VARCHAR(60) | YES | — | snapshot |
+| `action` | VARCHAR(64) | NO | — | index |
+| `details` | TEXT | NO | {} | allowlisted JSON, no passwords/tokens/profile values |
+| `created_at` | DATETIME(6) | NO | utcnow | index |
+
+#### `login_rate_buckets`
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `bucket_key` | VARCHAR(64) | NO | — | composite PK, keyed HMAC; no raw IP/username |
+| `window_start` | BIGINT | NO | — | composite PK, UTC epoch |
+| `attempts` | INTEGER | NO | — | CHECK >= 0 |
+| `expires_at` | DATETIME | NO | — | index; eligible for explicit pruning |
+
 ## 5. Enumeration Value Sets
 
 Approved unchanged (decision 6). SQLAlchemy stores the **name** column in MySQL.
@@ -338,11 +376,11 @@ Approved unchanged (decision 6). SQLAlchemy stores the **name** column in MySQL.
 | `ai_algorithm` | bfs, astar |
 | `disciplinary_decision` | no_action, warning, temporary_suspension, termination, under_review |
 
-### 5.1 New enumerations — PROPOSED, awaiting confirmation
+### 5.1 Additional approved enumerations
 
-Introduced by the tables approved in decisions 1 and 2. Not yet codified in PHASE 3.
+Introduced by decisions 1 and 2; implemented in the ORM and initial migration.
 
-| Enum | Proposed names | Display values |
+| Enum | Stored names | Display values |
 |---|---|---|
 | `service_type` | activity, food, sports, internet | Activity / Food / Sports / Internet |
 | `service_period_status` | upcoming, open, closed, completed | Upcoming / Open / Closed / Completed |
@@ -573,6 +611,10 @@ behaviour. Say so if you want `CASCADE` instead.
 
 ## 10. Migration Status
 
+The table below records the original author-reported environment. The D1 repair on
+2026-09-05 leaves the historical upgrade schema unchanged and fixes index cleanup in
+`downgrade()`. See [foundation-d1.md](foundation-d1.md) for independently tested results.
+
 | Item | State |
 |---|---|
 | Revision `ca98ebed8d42` | extended in place 2026-08-31 to all 22 tables; **applied 2026-08-31** |
@@ -588,25 +630,30 @@ Alembic scans. Because the revision had never been applied anywhere, extending i
 place produced one coherent initial schema instead of a second revision that would add
 foreign keys to columns created moments earlier.
 
-## 11. Open Items
+## 11. Open Items and historical artifacts
 
-1. Two empty leftover directories, `app\static` and `app\templates`, created by the pre-PHASE-1 import-time code. They are unused; deletion awaits a decision.
-2. Three generator artifacts in the project root — `_gen_upgrade.txt`, `_gen_downgrade.txt`, `_assemble_revision.py` — used to render the 22-table migration body from `Base.metadata`. Nothing imports them; removal awaits a decision.
-
-Resolved: the section 5.1 enumeration value sets and `ON DELETE RESTRICT` on the three
-structural foreign keys were both approved on 2026-08-30 and are codified in
-`app/models/enums.py`, `app/models/room.py`, and `app/models/cleaning.py`. The migration
-was applied on 2026-08-31.
-
-
+- Business workflows, retention policy and record-level permissions remain to be implemented.
+- `_assemble_revision.py` is retired and refuses to overwrite migrations. Its original source
+  is retained at `alembic/superseded/assemble_revision_legacy.py.txt` as non-executable text.
+- `_gen_upgrade.txt` and `_gen_downgrade.txt` are historical generator output, not runtime code.
+- `_offline_head.sql` is a historical error message, not executable SQL; it does not describe
+  the current Alembic head count. Existing local contents were preserved during D1.
+- The additional enum sets and the three structural RESTRICT foreign keys are implemented.
 
 
+## 12. Foundation D1 boundary
 
+The database schema remains 22 tables. Defaults such as UUIDs and timestamps are
+application-side defaults, not promises of server defaults for direct SQL callers.
+Online migrations preflight InnoDB and utf8mb4/utf8mb4_unicode_ci database defaults.
+Password-hash storage width is unchanged; newly stored hashes use Argon2id.
+The service-level capacity, dates, state transitions, retention and ownership rules
+are not implemented by D1. CASCADE policies remain unchanged pending D2 decisions.
 
+## 13. D2 identity migration
 
-
-
-
-
-
-
+Revision `d2a5c19f0b72` follows `ca98ebed8d42`. It adds two user fields and four
+security tables, preserves existing users, and seeds account_guard row 1. D1
+tokens are deliberately invalid under D2. Account hard deletion is blocked by
+application services/repositories; legacy student-owned CASCADE links remain
+unchanged. This is not a claim that a privileged DBA cannot delete data.

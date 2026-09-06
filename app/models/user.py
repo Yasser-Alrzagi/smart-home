@@ -4,7 +4,7 @@ All 9 roles from specification. No additional roles allowed.
 """
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, String
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Enum as SAEnum, Integer, String, text
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base, utcnow
@@ -13,6 +13,7 @@ from app.models.enums import UserRole
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (CheckConstraint("auth_version >= 0", name="ck_users_auth_version"),)
 
     user_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(80), unique=True, nullable=False, index=True)
@@ -22,6 +23,9 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+
+    auth_version = Column(Integer, default=0, server_default=text("0"), nullable=False)
+    must_change_password = Column(Boolean, default=False, server_default=text("0"), nullable=False)
 
     # Relationships
     student = relationship("Student", back_populates="user", uselist=False, cascade="all, delete-orphan")
