@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     DB_NAME: str = "smart_students_home"
     DATABASE_URL: Optional[str] = Field(None, repr=False)
 
+    DOCUMENT_MAX_BYTES: int = Field(5 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
+
     # Uploads
     UPLOAD_DIR: str = "uploads"
 

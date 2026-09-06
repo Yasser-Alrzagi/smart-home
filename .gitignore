@@ -31,3 +31,6 @@ desktop.ini
 # Generated test reports
 test-results*.xml
 .coverage.*
+
+# Local browser verification artifacts
+artifacts/

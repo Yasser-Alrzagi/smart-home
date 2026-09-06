@@ -5,6 +5,7 @@ from app.models import AuditEvent
 
 ALLOWED_DETAILS = {
     "changed_fields",
+    "application_id", "student_id", "document_id", "document_type", "version", "from_status", "to_status",
     "old_role",
     "new_role",
     "is_active",
