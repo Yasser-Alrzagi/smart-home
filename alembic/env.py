@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 
 from alembic import context
 
@@ -12,12 +12,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.core.database import Base
-import app.models  # noqa: F401 — registers all 22 models
+import app.models  # noqa: F401 — registers all 26 models
 
 config = context.config
 
 # Set the database URL dynamically from app settings
-config.set_main_option("sqlalchemy.url", settings.get_database_url)
+config.set_main_option("sqlalchemy.url", settings.get_database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -50,6 +50,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if connection.dialect.name not in {"mysql", "mariadb"}:
+            raise RuntimeError("Online migrations require MySQL/MariaDB.")
+        defaults = connection.execute(text(
+            "SELECT @@default_storage_engine, @@character_set_database, @@collation_database"
+        )).one()
+        if tuple(str(value).lower() for value in defaults) != ("innodb", "utf8mb4", "utf8mb4_unicode_ci"):
+            raise RuntimeError("Migrations require InnoDB and database utf8mb4/utf8mb4_unicode_ci defaults.")
+        # End the read-only preflight transaction before Alembic owns its transaction.
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

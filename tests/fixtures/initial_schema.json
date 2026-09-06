@@ -1,0 +1,1397 @@
+{
+  "floors": {
+    "columns": [
+      [
+        "floor_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "floor_number",
+        "VARCHAR(20)",
+        false
+      ],
+      [
+        "building_name",
+        "VARCHAR(100)",
+        false
+      ]
+    ],
+    "primary_key": [
+      "floor_id"
+    ],
+    "foreign_keys": [],
+    "unique_constraints": [
+      [
+        "uq_floors_building_number",
+        [
+          "building_name",
+          "floor_number"
+        ]
+      ]
+    ],
+    "indexes": []
+  },
+  "services": {
+    "columns": [
+      [
+        "service_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "service_type",
+        "ENUM('activity','food','sports','internet')",
+        false
+      ],
+      [
+        "name",
+        "VARCHAR(200)",
+        false
+      ],
+      [
+        "managed_by_role",
+        "ENUM('student','housing_administration','student_affairs','maintenance_officer','activity_officer','cleaning_officer','food_officer','sports_officer','system_administrator')",
+        false
+      ],
+      [
+        "is_active",
+        "BOOL",
+        false
+      ]
+    ],
+    "primary_key": [
+      "service_id"
+    ],
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  "users": {
+    "columns": [
+      [
+        "user_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "username",
+        "VARCHAR(80)",
+        false
+      ],
+      [
+        "email",
+        "VARCHAR(255)",
+        false
+      ],
+      [
+        "password_hash",
+        "VARCHAR(255)",
+        false
+      ],
+      [
+        "role",
+        "ENUM('student','housing_administration','student_affairs','maintenance_officer','activity_officer','cleaning_officer','food_officer','sports_officer','system_administrator')",
+        false
+      ],
+      [
+        "is_active",
+        "BOOL",
+        false
+      ],
+      [
+        "created_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "updated_at",
+        "DATETIME",
+        false
+      ]
+    ],
+    "primary_key": [
+      "user_id"
+    ],
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_users_email",
+        [
+          "email"
+        ],
+        true
+      ],
+      [
+        "ix_users_username",
+        [
+          "username"
+        ],
+        true
+      ]
+    ]
+  },
+  "apartments": {
+    "columns": [
+      [
+        "apartment_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "floor_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "apartment_number",
+        "VARCHAR(20)",
+        false
+      ]
+    ],
+    "primary_key": [
+      "apartment_id"
+    ],
+    "foreign_keys": [
+      [
+        "floor_id",
+        "floors.floor_id",
+        "RESTRICT"
+      ]
+    ],
+    "unique_constraints": [
+      [
+        "uq_apartments_floor_number",
+        [
+          "apartment_number",
+          "floor_id"
+        ]
+      ]
+    ],
+    "indexes": [
+      [
+        "ix_apartments_floor_id",
+        [
+          "floor_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "cleaning_cycles": {
+    "columns": [
+      [
+        "cycle_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "floor_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "start_date",
+        "DATE",
+        false
+      ],
+      [
+        "end_date",
+        "DATE",
+        true
+      ],
+      [
+        "status",
+        "ENUM('draft','optimizing','pending_approval','approved','active','completed')",
+        false
+      ],
+      [
+        "created_by",
+        "VARCHAR(36)",
+        true
+      ]
+    ],
+    "primary_key": [
+      "cycle_id"
+    ],
+    "foreign_keys": [
+      [
+        "created_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "floor_id",
+        "floors.floor_id",
+        "RESTRICT"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_cleaning_cycles_floor_id",
+        [
+          "floor_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "notifications": {
+    "columns": [
+      [
+        "notification_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "user_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "title",
+        "VARCHAR(300)",
+        false
+      ],
+      [
+        "message",
+        "TEXT",
+        false
+      ],
+      [
+        "status",
+        "ENUM('unread','read')",
+        false
+      ],
+      [
+        "created_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "read_at",
+        "DATETIME",
+        true
+      ]
+    ],
+    "primary_key": [
+      "notification_id"
+    ],
+    "foreign_keys": [
+      [
+        "user_id",
+        "users.user_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_notifications_user_id",
+        [
+          "user_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "service_periods": {
+    "columns": [
+      [
+        "period_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "service_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "start_date",
+        "DATE",
+        false
+      ],
+      [
+        "end_date",
+        "DATE",
+        false
+      ],
+      [
+        "capacity",
+        "INTEGER",
+        true
+      ],
+      [
+        "status",
+        "ENUM('upcoming','open','closed','completed')",
+        false
+      ]
+    ],
+    "primary_key": [
+      "period_id"
+    ],
+    "foreign_keys": [
+      [
+        "service_id",
+        "services.service_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_service_periods_service_id",
+        [
+          "service_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "students": {
+    "columns": [
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "user_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "full_name",
+        "VARCHAR(200)",
+        false
+      ],
+      [
+        "university",
+        "VARCHAR(200)",
+        false
+      ],
+      [
+        "major",
+        "VARCHAR(200)",
+        false
+      ],
+      [
+        "academic_status",
+        "ENUM('continuing','graduating','postgraduate','completed')",
+        false
+      ],
+      [
+        "housing_status",
+        "ENUM('active','academic_break','suspended','terminated')",
+        false
+      ],
+      [
+        "created_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "updated_at",
+        "DATETIME",
+        false
+      ]
+    ],
+    "primary_key": [
+      "student_id"
+    ],
+    "foreign_keys": [
+      [
+        "user_id",
+        "users.user_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_students_user_id",
+        [
+          "user_id"
+        ],
+        true
+      ]
+    ]
+  },
+  "ai_optimization_runs": {
+    "columns": [
+      [
+        "run_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "cycle_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "algorithm",
+        "ENUM('bfs','astar')",
+        false
+      ],
+      [
+        "total_cost",
+        "FLOAT",
+        true
+      ],
+      [
+        "fairness_score",
+        "FLOAT",
+        true
+      ],
+      [
+        "feasibility_rate",
+        "FLOAT",
+        true
+      ],
+      [
+        "nodes_expanded",
+        "INTEGER",
+        true
+      ],
+      [
+        "execution_time",
+        "FLOAT",
+        true
+      ],
+      [
+        "result_summary",
+        "TEXT",
+        true
+      ],
+      [
+        "approved_by",
+        "VARCHAR(36)",
+        true
+      ],
+      [
+        "created_at",
+        "DATETIME",
+        false
+      ]
+    ],
+    "primary_key": [
+      "run_id"
+    ],
+    "foreign_keys": [
+      [
+        "approved_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "cycle_id",
+        "cleaning_cycles.cycle_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_ai_optimization_runs_cycle_id",
+        [
+          "cycle_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "applications": {
+    "columns": [
+      [
+        "application_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "application_date",
+        "DATETIME",
+        false
+      ],
+      [
+        "status",
+        "ENUM('draft','submitted','under_review','pending_documents','accepted','rejected')",
+        false
+      ],
+      [
+        "decision_date",
+        "DATETIME",
+        true
+      ],
+      [
+        "decision_notes",
+        "TEXT",
+        true
+      ],
+      [
+        "reviewed_by",
+        "VARCHAR(36)",
+        true
+      ]
+    ],
+    "primary_key": [
+      "application_id"
+    ],
+    "foreign_keys": [
+      [
+        "reviewed_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_applications_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "cleaning_assignments": {
+    "columns": [
+      [
+        "assignment_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "cycle_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "task_description",
+        "VARCHAR(500)",
+        false
+      ],
+      [
+        "assignment_date",
+        "DATE",
+        false
+      ],
+      [
+        "status",
+        "ENUM('pending','in_progress','completed','skipped')",
+        false
+      ],
+      [
+        "completed_date",
+        "DATETIME",
+        true
+      ]
+    ],
+    "primary_key": [
+      "assignment_id"
+    ],
+    "foreign_keys": [
+      [
+        "cycle_id",
+        "cleaning_cycles.cycle_id",
+        "CASCADE"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_cleaning_assignments_cycle_id",
+        [
+          "cycle_id"
+        ],
+        false
+      ],
+      [
+        "ix_cleaning_assignments_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "complaints": {
+    "columns": [
+      [
+        "complaint_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "category",
+        "VARCHAR(100)",
+        false
+      ],
+      [
+        "description",
+        "TEXT",
+        false
+      ],
+      [
+        "status",
+        "ENUM('open','under_review','resolved','closed')",
+        false
+      ],
+      [
+        "created_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "updated_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "handled_by",
+        "VARCHAR(36)",
+        true
+      ],
+      [
+        "resolution",
+        "TEXT",
+        true
+      ]
+    ],
+    "primary_key": [
+      "complaint_id"
+    ],
+    "foreign_keys": [
+      [
+        "handled_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_complaints_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "disciplinary_cases": {
+    "columns": [
+      [
+        "case_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "incident_date",
+        "DATE",
+        false
+      ],
+      [
+        "description",
+        "TEXT",
+        false
+      ],
+      [
+        "decision",
+        "ENUM('no_action','warning','temporary_suspension','termination','under_review')",
+        false
+      ],
+      [
+        "start_date",
+        "DATE",
+        true
+      ],
+      [
+        "end_date",
+        "DATE",
+        true
+      ],
+      [
+        "decided_by",
+        "VARCHAR(36)",
+        true
+      ]
+    ],
+    "primary_key": [
+      "case_id"
+    ],
+    "foreign_keys": [
+      [
+        "decided_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_disciplinary_cases_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "permission_requests": {
+    "columns": [
+      [
+        "permission_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "status",
+        "ENUM('pending','approved','rejected','cancelled')",
+        false
+      ],
+      [
+        "start_date",
+        "DATE",
+        false
+      ],
+      [
+        "end_date",
+        "DATE",
+        false
+      ],
+      [
+        "reason",
+        "TEXT",
+        false
+      ],
+      [
+        "reviewed_by",
+        "VARCHAR(36)",
+        true
+      ]
+    ],
+    "primary_key": [
+      "permission_id"
+    ],
+    "foreign_keys": [
+      [
+        "reviewed_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_permission_requests_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "rooms": {
+    "columns": [
+      [
+        "room_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "apartment_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "room_number",
+        "VARCHAR(20)",
+        false
+      ],
+      [
+        "capacity",
+        "INTEGER",
+        false
+      ],
+      [
+        "status",
+        "ENUM('available','partially_occupied','fully_occupied','maintenance','closed')",
+        false
+      ]
+    ],
+    "primary_key": [
+      "room_id"
+    ],
+    "foreign_keys": [
+      [
+        "apartment_id",
+        "apartments.apartment_id",
+        "RESTRICT"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_rooms_apartment_id",
+        [
+          "apartment_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "service_registrations": {
+    "columns": [
+      [
+        "registration_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "period_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "registered_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "status",
+        "ENUM('registered','cancelled','completed')",
+        false
+      ]
+    ],
+    "primary_key": [
+      "registration_id"
+    ],
+    "foreign_keys": [
+      [
+        "period_id",
+        "service_periods.period_id",
+        "CASCADE"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [
+      [
+        "uq_service_registrations_period_student",
+        [
+          "period_id",
+          "student_id"
+        ]
+      ]
+    ],
+    "indexes": [
+      [
+        "ix_service_registrations_period_id",
+        [
+          "period_id"
+        ],
+        false
+      ],
+      [
+        "ix_service_registrations_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "student_absences": {
+    "columns": [
+      [
+        "absence_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "absence_type",
+        "ENUM('permission','emergency','unauthorized')",
+        false
+      ],
+      [
+        "start_date",
+        "DATE",
+        false
+      ],
+      [
+        "end_date",
+        "DATE",
+        true
+      ],
+      [
+        "source",
+        "VARCHAR(200)",
+        true
+      ],
+      [
+        "notes",
+        "TEXT",
+        true
+      ]
+    ],
+    "primary_key": [
+      "absence_id"
+    ],
+    "foreign_keys": [
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_student_absences_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "student_status_history": {
+    "columns": [
+      [
+        "history_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "status_type",
+        "ENUM('academic','housing')",
+        false
+      ],
+      [
+        "old_status",
+        "VARCHAR(50)",
+        true
+      ],
+      [
+        "new_status",
+        "VARCHAR(50)",
+        false
+      ],
+      [
+        "start_date",
+        "DATETIME",
+        false
+      ],
+      [
+        "end_date",
+        "DATETIME",
+        true
+      ],
+      [
+        "changed_by",
+        "VARCHAR(36)",
+        true
+      ],
+      [
+        "notes",
+        "TEXT",
+        true
+      ]
+    ],
+    "primary_key": [
+      "history_id"
+    ],
+    "foreign_keys": [
+      [
+        "changed_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_student_status_history_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "application_documents": {
+    "columns": [
+      [
+        "document_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "application_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "document_type",
+        "ENUM('national_id','university_id','academic_transcript','enrollment_certificate','medical_certificate','other')",
+        false
+      ],
+      [
+        "file_path",
+        "VARCHAR(500)",
+        false
+      ],
+      [
+        "uploaded_at",
+        "DATETIME",
+        false
+      ]
+    ],
+    "primary_key": [
+      "document_id"
+    ],
+    "foreign_keys": [
+      [
+        "application_id",
+        "applications.application_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_application_documents_application_id",
+        [
+          "application_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "emergency_reports": {
+    "columns": [
+      [
+        "report_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "reported_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "description",
+        "TEXT",
+        false
+      ],
+      [
+        "status",
+        "ENUM('reported','under_review','verified','closed')",
+        false
+      ],
+      [
+        "exit_verified",
+        "BOOL",
+        false
+      ],
+      [
+        "absence_id",
+        "VARCHAR(36)",
+        true
+      ],
+      [
+        "handled_by",
+        "VARCHAR(36)",
+        true
+      ]
+    ],
+    "primary_key": [
+      "report_id"
+    ],
+    "foreign_keys": [
+      [
+        "absence_id",
+        "student_absences.absence_id",
+        "SET NULL"
+      ],
+      [
+        "handled_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_emergency_reports_absence_id",
+        [
+          "absence_id"
+        ],
+        false
+      ],
+      [
+        "ix_emergency_reports_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "maintenance_requests": {
+    "columns": [
+      [
+        "request_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "room_id",
+        "VARCHAR(36)",
+        true
+      ],
+      [
+        "problem_type",
+        "VARCHAR(100)",
+        false
+      ],
+      [
+        "description",
+        "TEXT",
+        false
+      ],
+      [
+        "status",
+        "ENUM('pending','assigned','in_progress','resolved','closed')",
+        false
+      ],
+      [
+        "created_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "updated_at",
+        "DATETIME",
+        false
+      ],
+      [
+        "handled_by",
+        "VARCHAR(36)",
+        true
+      ],
+      [
+        "resolution",
+        "TEXT",
+        true
+      ]
+    ],
+    "primary_key": [
+      "request_id"
+    ],
+    "foreign_keys": [
+      [
+        "handled_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "room_id",
+        "rooms.room_id",
+        "SET NULL"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_maintenance_requests_room_id",
+        [
+          "room_id"
+        ],
+        false
+      ],
+      [
+        "ix_maintenance_requests_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  },
+  "room_assignments": {
+    "columns": [
+      [
+        "assignment_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "student_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "room_id",
+        "VARCHAR(36)",
+        false
+      ],
+      [
+        "assignment_date",
+        "DATETIME",
+        false
+      ],
+      [
+        "end_date",
+        "DATETIME",
+        true
+      ],
+      [
+        "status",
+        "ENUM('active','ended','transferred')",
+        false
+      ],
+      [
+        "assigned_by",
+        "VARCHAR(36)",
+        true
+      ]
+    ],
+    "primary_key": [
+      "assignment_id"
+    ],
+    "foreign_keys": [
+      [
+        "assigned_by",
+        "users.user_id",
+        "SET NULL"
+      ],
+      [
+        "room_id",
+        "rooms.room_id",
+        "CASCADE"
+      ],
+      [
+        "student_id",
+        "students.student_id",
+        "CASCADE"
+      ]
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      [
+        "ix_room_assignments_room_id",
+        [
+          "room_id"
+        ],
+        false
+      ],
+      [
+        "ix_room_assignments_student_id",
+        [
+          "student_id"
+        ],
+        false
+      ]
+    ]
+  }
+}

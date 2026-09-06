@@ -1,142 +1,214 @@
-# Smart Student Housing Management System — سكن بازرعة الطلابي
+# Smart Student Housing — سكن بازرعة الطلابي
 
-Web-based student housing management system with an AI-assisted cleaning rotation
-optimizer (BFS and A\*). Runs locally on XAMPP.
+**D1 foundation + D2 identity/account administration are implemented locally. This is not a complete housing product.**
 
-## Technology Stack
+- 26 ORM tables: the original 22 domain tables plus 4 identity/security tables.
+- 17 application HTTP operations, including self-service, administrator account management, and health/readiness.
+- No browser UI, public registration, student/application workflow, room allocation service, or BFS/A* implementation yet.
+- Approved provisioning policy: **only the System Administrator creates accounts and assigns roles**. Other roles manage only their own account/session through self-service endpoints.
 
-| Layer | Technology |
-|---|---|
-| Backend | Python, FastAPI |
-| Database | MySQL (XAMPP) |
-| ORM | SQLAlchemy 2.0 |
-| Migrations | Alembic |
-| Auth | JWT (HS256) + bcrypt |
-| Authorization | RBAC — 9 roles |
-| API | REST, JSON, documented with Swagger / OpenAPI |
-| Frontend | Web UI in the browser (Jinja2 templates + JavaScript calling the REST APIs) |
-| AI | BFS and A\* search only |
-| Architecture | Layered Architecture |
+## Stack and layout
 
-## Architecture
+Python 3.12/3.13 · FastAPI · SQLAlchemy 2 · Alembic · MySQL/MariaDB InnoDB · Argon2id · PyJWT/HS256.
 
-```
-Web Browser UI            app/web/
-        |  REST / JSON
-FastAPI REST APIs         app/api/v1/            (7 API groups)
-        |
-Business Logic + Security app/services/, app/core/security.py
-        |
-Data Access Layer         app/repositories/ (Repository Pattern), app/models/
-        |
-MySQL via XAMPP
+```text
+API -> policy/services -> repositories/ORM -> MySQL/MariaDB
 ```
 
-The Cleaning Rotation Optimizer (`app/ai/`) runs inside the same application layer
-and uses the same MySQL database. BFS and A\* are selected through the Strategy
-Pattern; results are advisory and require Cleaning Officer approval.
+Use `DatabaseSession` for HTTP dependencies and `session_scope()` for jobs/CLI. The D1
+unit of work commits before a successful response is sent, and rolls back the complete
+operation on failure. Repositories do not commit partial operations. Do not reuse the
+request session in background tasks or streaming responses.
 
-## Project Structure
+## Local setup
 
-```
-main.py                 FastAPI entry point (/, /health)
-alembic/                migration environment and versions
-app/
-  core/                 config, database engine/session, security (JWT + bcrypt)
-  models/               16 SQLAlchemy models
-  schemas/              Pydantic request/response schemas
-  repositories/         data access (Repository Pattern)
-  services/             business rules
-  ai/                   cleaning rotation optimizer (BFS + A*)
-  api/v1/               REST routers — 7 API groups
-  web/                  Jinja2 templates and static assets
-tests/                  unit/ integration/ scenario/ + conftest.py
-uploads/                uploaded application documents
-```
-
-## Setup
-
-Requires Python 3.12+ and a running XAMPP MySQL service.
+Create a fresh virtual environment. Runtime dependencies are exact pins with hashes:
 
 ```powershell
-# 1. Virtual environment
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-# 2. Dependencies
-pip install -r requirements.txt
-
-# 3. Configuration
+python -m pip install --require-hashes -r requirements.txt
 Copy-Item .env.example .env
-
-# 4. Generate a real SECRET_KEY and put it in .env
-#    The application refuses to start while SECRET_KEY is the placeholder value.
 python -c "import secrets; print(secrets.token_hex(48))"
+```
 
-# 5. Create the database (once), in MySQL:
-#    CREATE DATABASE smart_students_home CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+Put the generated signing key in `.env`, and set your local database credentials.
+On POSIX use `source .venv/bin/activate` and `cp .env.example .env`.
 
-# 6. Apply migrations
+Explicitly create a database/user for your local application. Required defaults:
+
+```sql
+CREATE DATABASE smart_students_home
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+The server storage engine must default to InnoDB. The reference server is MariaDB
+11.8.6 on Linux. Windows/XAMPP 10.4.21 has not been directly tested; the old documentation
+referred to that environment, not the new reference environment.
+
+```text
 alembic upgrade head
-
-# 7. Run
+python -m tools.bootstrap_admin --username YOUR_ADMIN --email you@example.com
 python main.py
 ```
 
-| URL | Description |
-|---|---|
-| `http://127.0.0.1:8000/` | Root |
-| `http://127.0.0.1:8000/health` | Health check — returns 503 if MySQL is unreachable |
-| `http://127.0.0.1:8000/docs` | Swagger UI (only while `DEBUG=True`) |
-| `http://127.0.0.1:8000/redoc` | ReDoc (only while `DEBUG=True`) |
+The bootstrap tool prompts for a password twice. It is one-time only, refuses to run
+if a System Administrator already exists, and never prints a password/token. Choose
+a real strong password; no default account is shipped. For explicit automation only,
+`--password-stdin` accepts one line from stdin; never put a password in command-line arguments.
+
+The development server listens on `http://127.0.0.1:8000` with reload. This is **not** a
+production server configuration. Interactive docs exist only with `DEBUG=True`.
+
+## Upgrading the D1 delivery
+
+1. Back up any data you want to keep and review the incremental patch.
+2. Reinstall dependencies from `requirements.txt` in a clean environment. PyJWT replaces
+   python-jose; the old ecdsa/rsa/pyasn1 chain is no longer in the runtime lock.
+3. Update `.env`: **change the old `ACCESS_TOKEN_EXPIRE_MINUTES=1440` to 30** (allowed 1–60).
+   Review the new issuer/audience, session-cap, and login-limit settings in the example.
+4. Run `alembic upgrade head` to revision `d2a5c19f0b72`.
+5. Sign in again: D1 tokens are deliberately invalid under the D2 claim/session contract.
+
+The new migration adds `users.auth_version`, `users.must_change_password`, `account_guard`,
+`auth_sessions`, `audit_events`, and `login_rate_buckets`. Existing user records and password
+hashes are preserved. Existing users are not forced to reset by the migration; new admin-
+provisioned accounts and admin password resets require a password change.
+
+The original migration was not rewritten. D2 downgrade removes new security tables and
+therefore their session/audit data; **do not treat downgrade as a safe production recovery
+strategy**. MySQL DDL is not protected by ordinary transaction rollback. Use backups and
+review a recovery plan if an applied migration is interrupted.
+
+## Account and session API
+
+Paths below are under `/api/v1`. Send the token as `Authorization: Bearer <token>`.
+Never put tokens in URLs. Login is form-encoded username/password, not a JSON body.
+
+| Method | Path | Access / effect |
+|---|---|---|
+| POST | `/auth/login/access-token` | Login, with persistent attempt limits |
+| GET | `/auth/users/me` | Own account |
+| PATCH | `/auth/users/me` | Own username/email only; privileged fields rejected |
+| POST | `/auth/change-password` | Current password + different new password; revokes all sessions |
+| POST | `/auth/logout` | Revoke current session |
+| POST | `/auth/logout-all` | Revoke all own sessions |
+| GET | `/auth/sessions` | Active own sessions only |
+| DELETE | `/auth/sessions/{session_id}` | Revoke an owned session, not delete its record |
+| POST | `/users` | System Administrator creates an account; forced initial password change |
+| GET | `/users` | Administrator list, bounded pagination |
+| GET | `/users/{user_id}` | Administrator account read |
+| PATCH | `/users/{user_id}` | Administrator username/email/role/is_active update |
+| POST | `/users/{user_id}/reset-password` | Administrator resets another account; force change and revoke sessions |
+| GET | `/audit-events` | System Administrator only |
+
+`/`, `/health`, `/ready` are public system operations. `/health` checks connectivity;
+`/ready` checks the expected schema revision, singleton guard, and identity tables/columns.
+A ready identity backend is not a claim that housing workflows or deployment safety are complete.
+
+No public registration and no account DELETE endpoint. The administrator cannot demote/
+disable themselves. Administrative role/state changes are serialized and preserve an active
+administrator. Concurrent conflicts can return 409; read current state before retrying.
+
+Full Arabic policy and limitations: **[docs/identity-policy.md](docs/identity-policy.md)**.
+
+## Security behavior and remaining operational work
+
+- New/changed passwords: 12–256 UTF-8 characters, at most 1024 bytes; never trimmed or truncated.
+- New hashes: Argon2id (64 MiB, 3 iterations, 4 lanes). Tune/measure production capacity.
+- Legacy bcrypt: verify only up to 72 bytes, then rehash on successful active login. Longer
+  legacy passwords need an authorized admin reset, not acceptance of their truncated prefix.
+- Default access lifetime 30 minutes; max five active sessions. Required exp/iat/sub/jti/ver/
+  type/iss/aud and an active matching DB session. No refresh tokens or anonymous recovery API.
+- Password/role/activation changes revoke all sessions. Re-enabling does not restore old tokens.
+- Default limits: 30 attempts/IP/60 seconds, 8 attempts/(account, IP)/300 seconds, including
+  successful attempts. Persistent atomic DB counters survive failed request rollbacks.
+- No global victim-account lock across other IPs. This reduces lockout abuse but is not complete
+  protection against distributed guessing. Configure limits for shared NATs and add MFA as needed.
+- Do not trust arbitrary forwarded headers; configure trusted proxy IPs in the ASGI server.
+- Events exclude passwords/tokens/raw IPs/profile values. ORM event mutation/deletion is blocked;
+  a privileged DBA/direct SQL is outside that protection. Retention duration is still to be approved.
+- `python -m tools.prune_login_limits` is a dry-run; add `--apply` to remove expired counters only.
+  Schedule it explicitly. There is no automatically running scheduler or automatic audit deletion.
+- TLS/reverse proxy, backup/restore, MFA, breached-password policy, production hardening and formal
+  security testing are not provided by this identity milestone.
 
 ## Configuration
 
-All settings come from `.env` (see `.env.example`). Unknown keys are rejected, so a
-typo fails loudly instead of being ignored.
+Normal application settings read the project-root `.env`; unknown dotenv keys are rejected.
+Missing/placeholder/short signing keys fail startup. Secret settings and password/token models
+hide their secrets in repr, and API validation responses omit input values.
 
-| Key | Notes |
-|---|---|
-| `SECRET_KEY` | **Required.** Minimum 32 characters, must not be the placeholder |
-| `DEBUG` | Also gates `/docs`, `/redoc`, `/openapi.json` |
-| `BACKEND_CORS_ORIGINS` | Comma-separated allowed browser origins. Never `*` |
-| `DATABASE_URL` | Full SQLAlchemy URL; overrides the `DB_*` values |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT lifetime |
-| `UPLOAD_DIR` | Resolved relative to the project root, not the working directory |
+`DATABASE_URL`, if explicitly supplied, overrides all `DB_*` settings. It is commented out in
+the example so editing DB_PASSWORD takes effect. DB_* uses SQLAlchemy URL escaping; a full
+URL must already percent-encode credentials. Alembic handles the percent interpolation safely.
+CORS requires explicit nonempty origins; wildcards are rejected. Development root/blank DB
+examples are not production permissions. Use a least-privileged account in deployment.
 
-## Tests
+## Tests — only dedicated disposable databases
 
-```powershell
-pytest -q
+```text
+python -m pip install --require-hashes -r requirements-dev.txt
+python -m pytest -q
 ```
 
-Tests run against the database configured in `.env`; no second database is created.
-Database tests use the `db_session` fixture, which wraps each test in a transaction
-that is rolled back on teardown.
+Without TEST_DATABASE_URL, DB-independent tests run and DB tests are explicitly skipped.
+The application `.env` is ignored and a test signing key is generated. The test URL guard
+permits mysql+pymysql/mariadb+pymysql, database names `smart_home_test` or
+`smart_home_test_<lowercase-alphanumeric-suffix>`, and hosts localhost/127.0.0.1/::1/mysql/mariadb.
 
-## Documentation
+To run all tests, explicitly create two **disposable** schemas with the required charset/
+collation and a test-only user. On PowerShell:
 
-| Document | Contents |
-|---|---|
-| [docs/database.md](docs/database.md) | Full schema for all 22 tables, enumerations, relationships, ERD, integrity policy |
+```powershell
+$env:TEST_DATABASE_URL="mysql+pymysql://TEST_USER:ENCODED_TEST_PASSWORD@127.0.0.1/smart_home_test?charset=utf8mb4"
+$env:TEST_MIGRATION_DATABASE_URL="mysql+pymysql://TEST_USER:ENCODED_TEST_PASSWORD@127.0.0.1/smart_home_test_migration?charset=utf8mb4"
+$env:RUN_MIGRATION_CYCLE="1"
+python -m tools.test_database
+python -m pytest -q --cov=app --cov=main --cov-branch
+```
 
-## Roles
+On POSIX use `export NAME='value'`. Never use a real/student database even if it is named
+like a test database. D2 test fixtures clear security events/sessions/rate counters and remove
+new synthetic users; do not keep data worth preserving in those test schemas.
 
-Student · Housing Administration · Student Affairs · Maintenance Officer ·
-Activity Officer · Cleaning Officer · Food Officer · Sports Officer ·
-System Administrator
+The migration cycle requires a distinct empty scratch schema (the known singleton seed is
+allowed). It tests both an empty full cycle and preservation of a synthetic existing D1 account
+through upgrade/downgrade. DDL is destructive and not covered by the transaction fixture.
 
-## API Groups
+The fixed initial schema is retained in `tests/fixtures/initial_schema.json`: new revisions
+are compared as a whole against current models, without modifying historical schema to make
+an initial-revision test pass. Live tests also verify FK rules, storage/collation and drift.
 
-1. Authentication
-2. Student & Application
-3. Housing
-4. Services
-5. Complaint & Maintenance
-6. Cleaning AI
-7. Reports
+## Dependency locks and CI
 
-## Status
+`pyproject.toml` declares dependencies; `uv.lock` is the universal lock. Requirements files
+are generated pins with hashes/platform markers. Do not edit them manually.
 
-Built in 21 sequential phases. Current position: **PHASE 1 — Project Initialization
-complete**; PHASE 4 (applying the Alembic migration) is next and pending approval.
+```text
+python -m pip install uv==0.12.10
+uv lock --check
+ruff check .
+```
+
+To intentionally update, use `uv lock --upgrade`, regenerate exports below, and rerun tests:
+
+```text
+uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file requirements.txt
+uv export --frozen --no-emit-project --format requirements-txt --output-file requirements-dev.txt
+```
+
+CI is configured in `.github/workflows/tests.yml` for Python 3.12/3.13 with disposable MariaDB
+11.8.6, locked installs, Ruff, and real migration cycles. Local test results are not a claim of
+an executed GitHub Actions run; no remote push has been performed by the assistant.
+
+## Project documentation
+
+- [Database and migration design](docs/database.md)
+- [D2 account/session policy — Arabic](docs/identity-policy.md)
+- [D2 delivery notes — Arabic](docs/identity-d2.md)
+- [Historical D1 delivery](docs/foundation-d1.md)
+
+Historical generator text and `_offline_head.sql` are not active migrations. The old assembler
+refuses to overwrite revisions; its source is archived as non-executable text under
+`alembic/superseded/`. Student/application/document/housing services and their UI are next (D3+).

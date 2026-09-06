@@ -1,13 +1,18 @@
 """FastAPI application entry point — API layer wiring only."""
+
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from app.api.v1 import auth
+from app.api.v1 import auth, users
+from app.core.errors import AppError
+from app.core.schema_version import SCHEMA_HEAD
 from app.core.config import ensure_directories, settings
 from app.core.database import engine
 
@@ -44,8 +49,49 @@ app.mount(
     name="static",
 )
 
-# REST routers — API group 1: Authentication.
+
+@app.exception_handler(AppError)
+async def domain_error(_: Request, exc: AppError):
+    return JSONResponse(
+        status_code=exc.status_code, content={"detail": exc.detail}, headers=exc.headers
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(_: Request, exc: RequestValidationError):
+    # FastAPI's default error body may echo passwords or extra secret fields.
+    errors = [
+        {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
+        for e in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_error(_: Request, exc: SQLAlchemyError):
+    code = getattr(getattr(exc, "orig", None), "args", (None,))[0]
+    if code in {1020, 1205, 1213}:
+        return JSONResponse(
+            status_code=409, content={"detail": "Concurrent update; retry the request."}
+        )
+    return JSONResponse(
+        status_code=503, content={"detail": "Service temporarily unavailable."}
+    )
+
+
+@app.middleware("http")
+async def private_api_responses(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith(settings.API_V1_STR):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+# Identity APIs only; housing workflows remain separate.
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(users.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/health", tags=["System"])
@@ -67,6 +113,36 @@ def health_check():
         "database_connected": database_connected,
     }
     return JSONResponse(status_code=200 if database_connected else 503, content=payload)
+
+
+@app.get("/ready", tags=["System"])
+def readiness():
+    try:
+        with engine.connect() as connection:
+            versions = (
+                connection.execute(text("SELECT version_num FROM alembic_version"))
+                .scalars()
+                .all()
+            )
+            guard = connection.execute(
+                text("SELECT guard_id FROM account_guard WHERE guard_id=1")
+            ).scalar()
+            connection.execute(
+                text("SELECT auth_version,must_change_password FROM users LIMIT 1")
+            )
+            for table, column in [
+                ("auth_sessions", "session_id"),
+                ("audit_events", "event_id"),
+                ("login_rate_buckets", "bucket_key"),
+            ]:
+                connection.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
+        ready = versions == [SCHEMA_HEAD] and guard == 1
+    except SQLAlchemyError:
+        ready = False
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={"status": "ready" if ready else "not_ready"},
+    )
 
 
 @app.get("/", tags=["System"])

@@ -1,9 +1,7 @@
-import pytest
 from sqlalchemy.orm import Session
 
-from app.models.user import User
 from app.models.enums import UserRole
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserUpdate
 from app.repositories.user import user_repo
 
 
@@ -77,18 +75,13 @@ def test_update_user(db_session: Session):
     
     
 def test_remove_user(db_session: Session):
-    user_in = {
-        "username": "testremove",
-        "email": "remove@example.com",
-        "password_hash": "hashedpassword",
-        "role": UserRole.student
-    }
-    user = user_repo.create(db_session, obj_in=user_in)
-    user_id = user.user_id
-    
-    removed_user = user_repo.remove(db_session, id=user_id)
-    assert removed_user is not None
-    assert removed_user.user_id == user_id
-    
-    user_2 = user_repo.get(db_session, id=user_id)
-    assert user_2 is None
+    from app.core.errors import HardDeleteDisabled
+    from app.models import User
+    from app.services.user import user_service
+    from app.schemas.user import UserCreate
+    import pytest
+    user = user_service.create(db_session, user_in=UserCreate(
+        username="retained_user", email="retained@example.com", password="safe-password", role=UserRole.student))
+    with pytest.raises(HardDeleteDisabled):
+        user_repo.remove(db_session, id=user.user_id)
+    assert db_session.get(User, user.user_id) is not None

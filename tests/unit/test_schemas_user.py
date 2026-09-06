@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from pydantic import ValidationError
 
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, UserResponse
 from app.models.enums import UserRole
 
 def test_create_valid_user():

@@ -11,7 +11,8 @@ from sqlalchemy import inspect, text
 from app.core.database import engine
 from app.models import Base
 
-EXPECTED_REVISION = "ca98ebed8d42"
+from app.core.schema_version import SCHEMA_HEAD
+EXPECTED_REVISION = SCHEMA_HEAD
 
 
 @pytest.fixture(scope="module")
@@ -36,9 +37,9 @@ def test_alembic_version_records_the_expected_revision(connection):
     assert versions == [EXPECTED_REVISION]
 
 
-def test_all_22_model_tables_exist(live_tables):
+def test_all_model_tables_exist(live_tables):
     expected = set(Base.metadata.tables)
-    assert len(expected) == 22
+    assert len(expected) == 26
     assert expected <= set(live_tables), f"missing: {sorted(expected - set(live_tables))}"
 
 

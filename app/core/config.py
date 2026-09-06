@@ -1,9 +1,12 @@
 """Application configuration loaded from environment / .env file."""
-from pathlib import Path
-from typing import List, Optional
 
-from pydantic import field_validator
+import os
+from pathlib import Path
+from typing import List, Literal, Optional
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 # Project root: <root>/app/core/config.py -> parents[2] == <root>
 BASE_DIR: Path = Path(__file__).resolve().parents[2]
@@ -16,6 +19,7 @@ _PLACEHOLDER_SECRETS = {
 
 
 class Settings(BaseSettings):
+    APP_ENV: Literal["development", "test", "production"] = "development"
     PROJECT_NAME: str = "Smart Student Housing Management System"
     PROJECT_NAME_AR: str = "سكن بازرعة الطلابي"
     VERSION: str = "1.0.0"
@@ -23,9 +27,16 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Security — SECRET_KEY has no default on purpose: it must come from the environment.
-    SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    SECRET_KEY: str = Field(repr=False)
+    ALGORITHM: Literal["HS256"] = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(30, ge=1, le=60)
+    JWT_ISSUER: str = Field("smart-student-housing", min_length=1, max_length=128)
+    JWT_AUDIENCE: str = Field("smart-student-housing-api", min_length=1, max_length=128)
+    MAX_ACTIVE_SESSIONS: int = Field(5, ge=1, le=20)
+    LOGIN_IP_LIMIT: int = Field(30, ge=1, le=1000)
+    LOGIN_IP_WINDOW_SECONDS: int = Field(60, ge=1, le=3600)
+    LOGIN_ACCOUNT_IP_LIMIT: int = Field(8, ge=1, le=100)
+    LOGIN_ACCOUNT_WINDOW_SECONDS: int = Field(300, ge=1, le=3600)
 
     # Browser origins allowed to call the API (comma separated).
     BACKEND_CORS_ORIGINS: str = "http://127.0.0.1:8000,http://localhost:8000"
@@ -34,9 +45,9 @@ class Settings(BaseSettings):
     DB_HOST: str = "127.0.0.1"
     DB_PORT: int = 3306
     DB_USER: str = "root"
-    DB_PASSWORD: str = ""
+    DB_PASSWORD: str = Field("", repr=False)
     DB_NAME: str = "smart_students_home"
-    DATABASE_URL: Optional[str] = None
+    DATABASE_URL: Optional[str] = Field(None, repr=False)
 
     # Uploads
     UPLOAD_DIR: str = "uploads"
@@ -46,6 +57,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="forbid",
+        hide_input_in_errors=True,
     )
 
     @field_validator("SECRET_KEY")
@@ -64,14 +76,33 @@ class Settings(BaseSettings):
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL
-        return (
-            f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
-        )
+        return URL.create(
+            "mysql+pymysql",
+            username=self.DB_USER,
+            password=self.DB_PASSWORD,
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            database=self.DB_NAME,
+            query={"charset": "utf8mb4"},
+        ).render_as_string(hide_password=False)
+
+    @field_validator("BACKEND_CORS_ORIGINS")
+    @classmethod
+    def _validate_cors(cls, value: str) -> str:
+        origins = [item.strip() for item in value.split(",") if item.strip()]
+        if not origins or any("*" in item for item in origins):
+            raise ValueError(
+                "CORS requires explicit, nonempty origins; wildcards are forbidden."
+            )
+        return value
 
     @property
     def cors_origins(self) -> List[str]:
-        return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
+        return [
+            origin.strip()
+            for origin in self.BACKEND_CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
 
     # Absolute paths — never depend on the process working directory.
     @property
@@ -88,7 +119,10 @@ class Settings(BaseSettings):
         return BASE_DIR / "app" / "web" / "templates"
 
 
-settings = Settings()
+# Tests must never read a developer/production .env, including unrelated secrets.
+settings = Settings(
+    _env_file=None if os.environ.get("APP_ENV") == "test" else BASE_DIR / ".env"
+)
 
 
 def ensure_directories() -> None:

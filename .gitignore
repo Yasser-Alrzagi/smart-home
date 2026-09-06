@@ -27,3 +27,7 @@ uploads/*
 .idea/
 Thumbs.db
 desktop.ini
+
+# Generated test reports
+test-results*.xml
+.coverage.*
