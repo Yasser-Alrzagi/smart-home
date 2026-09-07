@@ -38,6 +38,7 @@ EXPECTED_TABLES = {
     "emergency_reports",
     "disciplinary_cases",
     "notifications",
+    "attendance_records",
 }
 
 # (table, column) -> referenced table, for the structural parents that must not be
@@ -55,6 +56,10 @@ EXPECTED_UNIQUE_CONSTRAINTS = {
         "uq_service_registrations_period_student",
         {"period_id", "student_id"},
     ),
+    "attendance_records": (
+        "uq_attendance_student_date",
+        {"student_id", "record_date"},
+    ),
 }
 
 
@@ -65,7 +70,7 @@ def test_all_mappers_configure():
 
 def test_metadata_contains_exactly_the_expected_tables():
     assert set(Base.metadata.tables) == EXPECTED_TABLES
-    assert len(Base.metadata.tables) == 27
+    assert len(Base.metadata.tables) == 28
 
 
 @pytest.mark.parametrize("name", sorted(models.__all__))
@@ -115,6 +120,7 @@ def test_owned_children_cascade_on_student_delete():
         "service_registrations",
         "disciplinary_cases",
         "cleaning_assignments",
+        "attendance_records",
     ]
     for table in owned:
         fks = [
@@ -139,6 +145,7 @@ def test_actor_references_are_set_null():
         ("permission_requests", "reviewed_by"),
         ("emergency_reports", "handled_by"),
         ("disciplinary_cases", "decided_by"),
+        ("attendance_records", "recorded_by"),
     }
     for table, column in actor_columns:
         fks = [

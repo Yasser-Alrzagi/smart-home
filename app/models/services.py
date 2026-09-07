@@ -10,6 +10,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base, utcnow
 from app.models.enums import (
     AbsenceType,
+    AttendanceStatus,
     DisciplinaryDecision,
     EmergencyReportStatus,
     NotificationStatus,
@@ -121,3 +122,32 @@ class Notification(Base):
 
     def __repr__(self):
         return f"<Notification(notification_id={self.notification_id}, user_id={self.user_id}, status={self.status})>"
+
+
+class AttendanceRecord(Base):
+    """Daily attendance ledger; one row per student per date.
+
+    ``status`` is officer-declared. Marking a day ``absent`` without an
+    approved permission or verified emergency for that date produces the
+    matching ``Unauthorized`` StudentAbsence (source ``attendance:<id>``).
+    """
+
+    __tablename__ = "attendance_records"
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint(
+            "student_id", "record_date", name="uq_attendance_student_date"
+        ),
+    )
+
+    record_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    student_id = Column(String(36), ForeignKey("students.student_id", ondelete="CASCADE"), nullable=False, index=True)
+    record_date = Column(Date, nullable=False, index=True)
+    status = Column(SAEnum(AttendanceStatus), nullable=False)
+    notes = Column(Text, nullable=True)
+    recorded_by = Column(String(36), ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    source = Column(String(30), nullable=False, default="officer")  # officer | bulk
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    # Relationships
+    student = relationship("Student", back_populates="attendance_records")
+    recorder = relationship("User", foreign_keys=[recorded_by])

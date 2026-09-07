@@ -38,6 +38,10 @@ ALLOWED_DETAILS = {
     "notification_id",
     "count",
     "read",
+    # D7 daily attendance: identifiers, date and status only.
+    "attendance_record_id",
+    "date",
+    "status",
 }
 
 

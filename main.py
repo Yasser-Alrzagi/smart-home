@@ -10,7 +10,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from app.api.v1 import auth, users, admissions, housing, facilities, support, attendance, notifications
+from app.api.v1 import (
+    auth,
+    users,
+    admissions,
+    housing,
+    facilities,
+    support,
+    attendance,
+    notifications,
+    daily_attendance,
+)
 from app.web.routes import router as web_router
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import AppError
@@ -101,6 +111,7 @@ app.include_router(facilities.router, prefix=settings.API_V1_STR)
 app.include_router(support.router, prefix=settings.API_V1_STR)
 app.include_router(attendance.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
+app.include_router(daily_attendance.router, prefix=settings.API_V1_STR)
 app.include_router(web_router)
 
 

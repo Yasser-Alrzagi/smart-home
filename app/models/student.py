@@ -90,5 +90,9 @@ class Student(Base):
         "CleaningAssignment", back_populates="student", cascade="all, delete-orphan"
     )
 
+    attendance_records = relationship(
+        "AttendanceRecord", back_populates="student", cascade="all, delete-orphan"
+    )
+
     def __repr__(self):
         return f"<Student(student_id={self.student_id}, full_name={self.full_name}, housing_status={self.housing_status})>"

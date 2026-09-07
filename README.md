@@ -1,6 +1,6 @@
 # Smart Student Housing — سكن بازرعة الطلابي
 
-**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance + D6 notifications are implemented, with a fully Arabic browser portal. Attendance records and cleaning AI are still to come.**
+**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance + D6 notifications + D7 daily attendance ledger are implemented, with a fully Arabic browser portal. Officer dashboards and cleaning AI are still to come.**
 
 - 27 ORM tables: domain tables, identity/security, application history, and the housing structure.
 - Identity, admission and **housing** HTTP APIs, health/readiness, and an Arabic browser portal at `/app` including a "غرفتي" student view and a full Housing Administration workspace.
@@ -91,6 +91,28 @@ D5 adds **no migration** either: the service, complaint, maintenance, permission
 absence tables already exist since D1, and `SCHEMA_HEAD` stays at `d3b7a21c8f04`.
 Full Arabic policy and tested delivery: **[docs/services-d5.md](docs/services-d5.md)**,
 **[docs/d5-results.md](docs/d5-results.md)** and **[docs/notifications-d6.md](docs/notifications-d6.md)**.
+
+## D7: daily attendance ledger and unauthorized absences
+
+Housing Administration records an attendance row per student per day (`Present` / `Late` /
+`Absent` / `Excused`) in one bulk call; marking a day `Absent` without an approved permission or a
+verified emergency exit covering that date creates a persistent `Unauthorized` absence
+(`source = attendance:<record_id>`, once per record). Correcting a day later never deletes the
+documented absence. Students read only their own ledger.
+
+| Area | Behavior |
+|---|---|
+| Recording | One row per student per date (unique `student_id + record_date`); re-recording same day updates, it never duplicates |
+| Unauthorized absence | Created automatically on `Absent` when no coverage: approved permission containing the date, or a same-day verified emergency report; deduplicated per attendance record (`absence_id` returned in the bulk response) |
+| Coverage check | `permission_requests` approved + date in range, or `emergency_reports` verified on the same day — evaluated on the student's current records only |
+| Ownership | Housing Administration writes and lists days; students get `my-ledger` only; any other role → 403; no update/delete endpoints at all |
+| Audit | `attendance.record` with identifiers/date/status only, same transaction |
+| Migration | `d7a1b2c3d4e5` adds `attendance_records`; `SCHEMA_HEAD` moved to `d7a1b2c3d4e5`; contract tests (tables, unique constraint, cascade/SET NULL, Alembic chain, `docs/database.md`) updated to 28 tables |
+
+Endpoints (`/api/v1`): `POST /attendance/daily`, `GET /attendance/daily?record_date=`,
+`GET /attendance/my-ledger`, `GET /attendance/students?q=`.
+Full Arabic policy and tested delivery: **[docs/attendance-daily-d7.md](docs/attendance-daily-d7.md)**
+and **[docs/d7-results.md](docs/d7-results.md)**.
 
 ## Stack and layout
 
@@ -307,8 +329,10 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 ## Project documentation
 
+- [D7 daily attendance policy — Arabic](docs/attendance-daily-d7.md)
 - [D6 notification policy — Arabic](docs/notifications-d6.md)
 - [D5 services/support/attendance policy — Arabic](docs/services-d5.md)
+- [D7 tested delivery results — Arabic](docs/d7-results.md)
 - [D5 tested delivery results — Arabic](docs/d5-results.md)
 - [D4 housing policy — Arabic](docs/housing-d4.md)
 - [D3 admission policy and UI — Arabic](docs/admissions-d3.md)
@@ -323,5 +347,6 @@ Historical generator text and `_offline_head.sql` are not active migrations. The
 refuses to overwrite revisions; its source is archived as non-executable text under
 `alembic/superseded/`. D4 (room allocation and transfers) and D5 (services, complaints,
 maintenance, permissions/absences and emergency reports, with Arabic portal views) are delivered;
-D6 (notifications mailbox with event-driven delivery) is delivered; attendance records,
-officer dashboards and cleaning AI (BFS/A*) follow later.
+D6 (notifications mailbox with event-driven delivery) and D7 (daily attendance ledger with
+automatic unauthorized absences) are delivered; officer dashboards and cleaning AI (BFS/A*)
+follow later.

@@ -1,2 +1,2 @@
 """Application schema contract; CI compares this with the Alembic graph."""
-SCHEMA_HEAD = "d3b7a21c8f04"
+SCHEMA_HEAD = "d7a1b2c3d4e5"

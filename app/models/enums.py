@@ -94,6 +94,13 @@ class PermissionStatus(str, enum.Enum):
     cancelled = "Cancelled"
 
 
+class AttendanceStatus(str, enum.Enum):
+    present = "Present"
+    late = "Late"
+    absent = "Absent"
+    excused = "Excused"
+
+
 class AbsenceType(str, enum.Enum):
     permission = "Permission"
     emergency = "Emergency"

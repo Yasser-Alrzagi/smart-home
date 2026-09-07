@@ -39,7 +39,7 @@ def test_alembic_version_records_the_expected_revision(connection):
 
 def test_all_model_tables_exist(live_tables):
     expected = set(Base.metadata.tables)
-    assert len(expected) == 27
+    assert len(expected) == 28
     assert expected <= set(live_tables), f"missing: {sorted(expected - set(live_tables))}"
 
 

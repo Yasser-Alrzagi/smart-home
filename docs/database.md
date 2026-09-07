@@ -24,7 +24,7 @@
 | 5 | Mandatory application documents: National ID, University ID, Enrollment Certificate |
 | 6 | Existing enumeration value sets approved unchanged |
 
-**Current total tables: 27** — original domain tables, D2 identity security, and D3 application history.
+**Current total tables: 28** — original domain tables, D2 identity security, D3 application history, and the D7 daily attendance ledger.
 
 ## 3. Table Inventory
 
@@ -35,6 +35,7 @@
 | Applications | `applications`, `application_documents` |
 | Housing | `floors`, `apartments`, `rooms`, `room_assignments` |
 | Services | `services`, `service_periods`, `service_registrations`, `permission_requests`, `emergency_reports`, `student_absences` |
+| Attendance | `attendance_records` |
 | Discipline | `disciplinary_cases` |
 | Complaints & Maintenance | `complaints`, `maintenance_requests` |
 | Cleaning AI | `cleaning_cycles`, `cleaning_assignments`, `ai_optimization_runs` |
@@ -231,6 +232,18 @@ implies an absence") auditable.
 | `source` | VARCHAR(200) | YES | — | originating permission or report reference |
 | `notes` | TEXT | YES | — | |
 
+#### `attendance_records`
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `record_id` | VARCHAR(36) | NO | uuid4 | PK |
+| `student_id` | VARCHAR(36) | NO | — | FK `students` CASCADE, index |
+| `record_date` | DATE | NO | — | index; unique per student per date |
+| `status` | ENUM(attendance_status) | NO | — | Present / Late / Absent / Excused |
+| `notes` | TEXT | YES | — | |
+| `recorded_by` | VARCHAR(36) | YES | — | FK `users` SET NULL |
+| `source` | VARCHAR(30) | NO | officer | officer / bulk |
+| `created_at` | DATETIME | NO | now | |
+
 ### 4.6 Discipline
 
 #### `disciplinary_cases`
@@ -398,6 +411,7 @@ Approved unchanged (decision 6). SQLAlchemy stores the **name** column in MySQL.
 | `permission_status` | pending, approved, rejected, cancelled |
 | `absence_type` | permission, emergency, unauthorized |
 | `notification_status` | unread, read |
+| `attendance_status` | present, late, absent, excused |
 | `ai_algorithm` | bfs, astar |
 | `disciplinary_decision` | no_action, warning, temporary_suspension, termination, under_review |
 
@@ -434,6 +448,8 @@ students               1 ── N   permission_requests             (CASCADE)
 students               1 ── N   emergency_reports               (CASCADE)       NEW
 student_absences       1 ── N   emergency_reports               (SET NULL)      NEW
 students               1 ── N   student_absences                (CASCADE)
+students               1 ── N   attendance_records              (CASCADE)
+users                  1 ── N   attendance_records              (SET NULL)
 students               1 ── N   disciplinary_cases              (CASCADE)
 floors                 1 ── N   cleaning_cycles                 (RESTRICT)      NEW
 cleaning_cycles        1 ── N   cleaning_assignments            (CASCADE)
@@ -534,6 +550,7 @@ erDiagram
     students ||--o{ emergency_reports : files
     students ||--o{ student_absences : "absent in"
     student_absences ||--o{ emergency_reports : "resulted from"
+    students ||--o{ attendance_records : "attended in"
     students ||--o{ disciplinary_cases : "subject of"
     students ||--o{ complaints : files
 

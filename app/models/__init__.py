@@ -21,6 +21,7 @@ from app.models.service_catalog import (                  # noqa: F401
 )
 from app.models.services import (                         # noqa: F401
     PermissionRequest,
+    AttendanceRecord,
     StudentAbsence,
     EmergencyReport,
     DisciplinaryCase,
