@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from app.core.config import settings
@@ -23,6 +23,27 @@ def session_scope() -> Generator[Session, None, None]:
     """
     with SessionLocal.begin() as db:
         yield db
+
+
+def get_named_lock(db: Session, name: str, timeout: int = 10) -> bool:
+    """Acquire a server-side named lock on this session's connection.
+
+    The lock is held by that connection until ``release_named_lock`` is called
+    on it (or the connection ends), so the owning unit of work is responsible
+    for releasing it after it commits.
+    """
+    return (
+        db.execute(
+            text("SELECT GET_LOCK(:name, :timeout)").bindparams(
+                name=name, timeout=timeout
+            )
+        ).scalar()
+        == 1
+    )
+
+
+def release_named_lock(db: Session, name: str) -> None:
+    db.execute(text("SELECT RELEASE_LOCK(:name)").bindparams(name=name))
 
 
 def get_db() -> Generator[Session, None, None]:

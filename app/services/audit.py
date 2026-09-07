@@ -23,6 +23,17 @@ ALLOWED_DETAILS = {
     "occupancy",
     "capacity",
     "room_status",
+    # D5 facilities/support/attendance: identifiers and counts only.
+    "service_id",
+    "service_type",
+    "period_id",
+    "registration_id",
+    "registration_count",
+    "complaint_id",
+    "maintenance_request_id",
+    "permission_id",
+    "emergency_report_id",
+    "absence_id",
 }
 
 

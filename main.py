@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from app.api.v1 import auth, users, admissions, housing
+from app.api.v1 import auth, users, admissions, housing, facilities, support, attendance
 from app.web.routes import router as web_router
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import AppError
@@ -91,12 +91,15 @@ async def private_api_responses(request: Request, call_next):
     return response
 
 
-# Identity + admissions + housing APIs and the local-asset web portal.
+# Identity + admissions + housing + D5 product APIs and the local-asset web portal.
 app.add_middleware(BodyLimitMiddleware)
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(admissions.router, prefix=settings.API_V1_STR)
 app.include_router(housing.router, prefix=settings.API_V1_STR)
+app.include_router(facilities.router, prefix=settings.API_V1_STR)
+app.include_router(support.router, prefix=settings.API_V1_STR)
+app.include_router(attendance.router, prefix=settings.API_V1_STR)
 app.include_router(web_router)
 
 
@@ -148,6 +151,14 @@ def readiness():
                 ("apartments", "apartment_id"),
                 ("rooms", "room_id"),
                 ("room_assignments", "assignment_id"),
+                ("services", "service_id"),
+                ("service_periods", "period_id"),
+                ("service_registrations", "registration_id"),
+                ("complaints", "complaint_id"),
+                ("maintenance_requests", "request_id"),
+                ("permission_requests", "permission_id"),
+                ("emergency_reports", "report_id"),
+                ("student_absences", "absence_id"),
             ]:
                 connection.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
         ready = versions == [SCHEMA_HEAD] and guard == 1
