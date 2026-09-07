@@ -1,10 +1,10 @@
 # Smart Student Housing — سكن بازرعة الطلابي
 
-**D1 foundation + D2 identity + D3 two-stage admissions and an initial Arabic UI are implemented. Room allocation and the remaining housing product are still to come.**
+**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers are implemented, with a fully Arabic browser portal. Services, complaints, absences and cleaning AI are still to come.**
 
-- 27 ORM tables: domain tables, identity/security, and application history.
-- Identity + admission HTTP APIs, health/readiness, and an Arabic browser portal at `/app`.
-- Student profile, required documents, Student Affairs review and Housing Administration decisions are implemented. No public registration, room-allocation service, or BFS/A* implementation yet.
+- 27 ORM tables: domain tables, identity/security, application history, and the housing structure.
+- Identity, admission and **housing** HTTP APIs, health/readiness, and an Arabic browser portal at `/app` including a "غرفتي" student view and a full Housing Administration workspace.
+- Student profile, required documents, Student Affairs review, Housing Administration decisions, **room allocation, transfers and ended-assignment history** are implemented. No public registration, service registration, or BFS/A* implementation yet.
 - Approved provisioning policy: **only the System Administrator creates accounts and assigns roles**. Other roles manage only their own account/session through self-service endpoints.
 
 ## D3: open the Arabic portal
@@ -34,6 +34,30 @@ not used to expose these documents. See **[D3 policy and operations](docs/admiss
 
 The UI keeps its token in page memory, never localStorage/sessionStorage/cookies. Reloading
 requires login again. There are no seeded production/demo credentials in the archive.
+
+## D4: room allocation and transfers
+
+Housing Administration manages the structure (`floors` → `apartments` → `rooms`) and the assignment
+lifecycle; students see their own room at `/app` under «غرفتي». Approval is never allocation and
+allocation is never automatic.
+
+| Rule | Behavior |
+|---|---|
+| Eligibility | Only students with an `Accepted` application; `Suspended`/`Terminated` are refused (409) |
+| One active assignment | A second allocation for the same student is refused (409) |
+| Capacity | Enforced under room row locks; over-capacity is refused (422); concurrent allocations to a full room cannot both succeed |
+| Room status | Derived from occupancy (`available`/`partially_occupied`/`fully_occupied`); `maintenance`/`closed` are officer-declared and refuse new allocations |
+| Transfer | Old assignment becomes `Transferred` with an end date; a new active assignment is created; source/target rooms are locked in sorted order |
+| End | Assignment becomes `Ended`; the student returns to the eligible list; no deletion anywhere |
+| History | First allocation moves `applicant` → `active` and records `student_status_history`; ending never silently changes the housing status |
+| Audit | `housing.*` events with identifiers/numbers only (no names, no profile values) |
+
+Endpoints (`/api/v1`): `GET/POST /housing/floors`, `GET/POST /housing/apartments`, `GET/POST /housing/rooms`,
+`PATCH /housing/rooms/{id}`, `GET /housing/students/unassigned`, `GET/POST /housing/assignments`,
+`POST /housing/assignments/{id}/transfer`, `POST /housing/assignments/{id}/end`, `GET /housing/me`.
+
+D4 adds **no migration**: the housing tables already exist since D1, and `SCHEMA_HEAD` stays at
+`d3b7a21c8f04`. Full Arabic policy and limitations: **[docs/housing-d4.md](docs/housing-d4.md)**.
 
 ## Stack and layout
 
@@ -250,6 +274,7 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 ## Project documentation
 
+- [D4 housing policy — Arabic](docs/housing-d4.md)
 - [D3 admission policy and UI — Arabic](docs/admissions-d3.md)
 - [D3 tested delivery results — Arabic](docs/d3-results.md)
 
@@ -260,4 +285,5 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 Historical generator text and `_offline_head.sql` are not active migrations. The old assembler
 refuses to overwrite revisions; its source is archived as non-executable text under
-`alembic/superseded/`. Room allocation/transfers are next (D4); services and AI follow later.
+`alembic/superseded/`. Room allocation and transfers are delivered (D4); services, complaints,
+absences and cleaning AI follow later (D5).

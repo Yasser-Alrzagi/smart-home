@@ -214,11 +214,80 @@ def main():
             )
             page.get_by_role("button", name="قبول الطلب", exact=True).click()
             expect(page.locator("#detailContent .badge")).to_have_text("مقبول")
+            if page.locator("#detailDialog").is_visible():
+                page.locator("#closeDialog").click()
+            # D4: build one floor/apartment/room and allocate through the UI.
+            nav("السكن والغرف")
+            expect(page.locator("#page h1")).to_contain_text("السكن والغرف")
+            structure = page.locator("section.panel").filter(has_text="البنية السكنية")
+            floor_form = structure.locator("form").filter(has_text="اسم المبنى")
+            floor_form.locator("input[name=building_name]").fill(
+                "مبنى برمجي " + suffix
+            )
+            floor_form.locator("input[name=floor_number]").fill("1")
+            structure.get_by_role(
+                "button", name="إضافة مبنى/طابق", exact=True
+            ).click()
+            expect(page.locator("#message")).to_contain_text("أُضيف المبنى/الطابق")
+            # housingPage() re-renders after each add; wait until the fresh DOM
+            # shows the new structure before interacting with the next form.
+            structure = page.locator("section.panel").filter(has_text="البنية السكنية")
+            expect(structure).to_contain_text("مبنى برمجي " + suffix)
+            apartment_form = structure.locator("form").filter(has_text="رقم الشقة")
+            apartment_form.locator("select").select_option(
+                label="مبنى برمجي " + suffix + " · الطابق 1"
+            )
+            apartment_form.locator("input[name=apartment_number]").fill("برمجية")
+            structure.get_by_role("button", name="إضافة شقة", exact=True).click()
+            expect(page.locator("#message")).to_contain_text("أُضيفت الشقة")
+            structure = page.locator("section.panel").filter(has_text="البنية السكنية")
+            expect(structure).to_contain_text("شقة برمجية")
+            room_form = structure.locator("form").filter(has_text="رقم الغرفة")
+            room_form.locator("select").select_option(
+                label=(
+                    "مبنى برمجي " + suffix + " · الطابق 1 · شقة برمجية"
+                )
+            )
+            room_form.locator("input[name=room_number]").fill("بي 101")
+            structure.get_by_role("button", name="إضافة غرفة", exact=True).click()
+            expect(page.locator("#message")).to_contain_text("أُضيفت الغرفة")
+            # Wait for the room row (fresh render) before opening the dialog,
+            # otherwise the dialog would show a stale free-rooms snapshot.
+            rooms_panel = page.locator("section.panel").filter(
+                has_text="حالة الإشغال تُحسب"
+            )
+            expect(
+                rooms_panel.locator("tr", has_text="مبنى برمجي " + suffix).first
+            ).to_be_visible()
+            eligible = page.locator("section.panel").filter(has_text="بانتظار غرفة")
+            eligible.get_by_role(
+                "button", name="تخصيص غرفة", exact=True
+            ).first.click()
+            expect(page.locator("#detailDialog")).to_be_visible()
+            page.locator("#detailDialog select").select_option(
+                label=(
+                    "مبنى برمجي " + suffix + " · الطابق 1 · شقة برمجية"
+                    " · غرفة بي 101 (متاح 1)"
+                )
+            )
+            page.locator("#detailDialog").get_by_role(
+                "button", name="تأكيد التخصيص", exact=True
+            ).click()
+            expect(page.locator("#message")).to_contain_text("تم التسكين بنجاح")
+            expect(
+                page.locator("section.panel").filter(has_text="التسكينات النشطة")
+            ).to_contain_text("طالب تجريبي")
+            capture("housing-desktop.png")
             logout()
             login("student")
             nav("لوحة المتابعة")
             expect(page.locator("#page")).to_contain_text("مقبول")
             capture("student-desktop.png")
+            nav("غرفتي")
+            expect(page.locator("#page h1")).to_contain_text("غرفتي")
+            expect(page.locator("#page")).to_contain_text("مبنى برمجي " + suffix)
+            expect(page.locator("#page")).to_contain_text("بي 101")
+            capture("student-room.png")
             page.set_viewport_size({"width": 390, "height": 844})
             capture("student-mobile.png")
             assert page.evaluate(
@@ -234,8 +303,9 @@ def main():
                 json.dumps(
                     {
                         "status": "passed",
-                        "workflow": "student -> affairs -> housing -> accepted",
+                        "workflow": "student -> affairs -> housing -> accepted -> allocated",
                         "required_documents": 2,
+                        "room_allocation_ui": True,
                         "xss_execution": False,
                         "persistent_token_storage": False,
                         "mobile_horizontal_overflow": False,
@@ -247,7 +317,7 @@ def main():
             )
             browser.close()
         print(
-            "Browser workflow passed: profile, two files, submit, two-role review, decision, private download, XSS, mobile, logout/reload."
+            "Browser workflow passed: profile, two files, submit, two-role review, decision, room allocation/transfer UI, private download, XSS, mobile, logout/reload."
         )
     finally:
         if server:

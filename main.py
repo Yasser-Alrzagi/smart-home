@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from app.api.v1 import auth, users, admissions
+from app.api.v1 import auth, users, admissions, housing
 from app.web.routes import router as web_router
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import AppError
@@ -91,11 +91,12 @@ async def private_api_responses(request: Request, call_next):
     return response
 
 
-# Identity + admissions APIs and the local-asset web portal.
+# Identity + admissions + housing APIs and the local-asset web portal.
 app.add_middleware(BodyLimitMiddleware)
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(admissions.router, prefix=settings.API_V1_STR)
+app.include_router(housing.router, prefix=settings.API_V1_STR)
 app.include_router(web_router)
 
 
@@ -143,6 +144,10 @@ def readiness():
                 ("students", "profile_version"),
                 ("application_documents", "content_type"),
                 ("application_events", "event_id"),
+                ("floors", "floor_id"),
+                ("apartments", "apartment_id"),
+                ("rooms", "room_id"),
+                ("room_assignments", "assignment_id"),
             ]:
                 connection.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
         ready = versions == [SCHEMA_HEAD] and guard == 1

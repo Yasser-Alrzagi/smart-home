@@ -2,3 +2,12 @@
 
 /* Readable secondary text on small screens. */
 .muted,.hint,.stat-label,.stat small,.document-row small,.page-head p,.identity small,.timeline-item small,.date-label,.panel-title span{color:#61776b}.hint,.stat-label,.stat small,.document-row small,.timeline-item small,.panel-title span,.identity small{font-size:12px}th{font-size:12px;color:#61776b}.portal-footer{font-size:11px;color:#708678}
+
+/* D4 housing: inline structure forms and key/value details. */
+.inline-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:10px 0;padding:12px;background:#f8faf7;border:1px solid #e6ede6;border-radius:9px}
+.inline-form label{flex:1;min-width:140px}
+.inline-form select{width:100%}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;font-size:12px;margin:8px 0}
+.kv b{color:#8b9d90;font-weight:500}
+.kv span{color:#50695b}
+@media(max-width:680px){.inline-form{flex-direction:column;align-items:stretch}.inline-form label{min-width:0}}

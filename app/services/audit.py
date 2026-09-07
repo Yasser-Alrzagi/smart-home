@@ -13,6 +13,16 @@ ALLOWED_DETAILS = {
     "account_key",
     "source_key",
     "revoked_count",
+    # D4 housing: identifiers and occupancy numbers only, never profile values.
+    "floor_id",
+    "apartment_id",
+    "room_id",
+    "assignment_id",
+    "from_room_id",
+    "to_room_id",
+    "occupancy",
+    "capacity",
+    "room_status",
 }
 
 
