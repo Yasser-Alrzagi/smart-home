@@ -30,6 +30,7 @@ from app.models.enums import (
 )
 from app.services.accounts import account_write
 from app.services.audit import record_event
+from app.services.notifications import notify_role, notify_user
 from app.services.sessions import lock_self
 
 REVIEWER = R.student_affairs
@@ -125,6 +126,13 @@ def create_permission(db, ctx, data):
         target_id=student.user_id,
         details={"permission_id": permission.permission_id},
     )
+    notify_role(
+        db,
+        REVIEWER,
+        "طلب إذن غياب جديد",
+        f"طلب «{student.full_name}» إذن غياب من {permission.start_date} إلى {permission.end_date}.",
+        exclude_user_id=actor.user_id,
+    )
     return _permission_dict(db, permission)
 
 
@@ -207,6 +215,17 @@ def review_permission(db, ctx, permission_id, action):
             "to_status": target.value,
         },
     )
+    student = db.get(Student, permission.student_id)
+    if student is not None:
+        notify_user(
+            db,
+            user_id=student.user_id,
+            title="قرار طلب الإذن",
+            message=(
+                f"طلب إذن الغياب ({permission.start_date} → {permission.end_date}) "
+                f"أصبح {target.value}."
+            ),
+        )
     return _permission_dict(db, permission)
 
 
@@ -277,6 +296,13 @@ def create_report(db, ctx, data):
         actor=actor,
         target_id=student.user_id,
         details={"emergency_report_id": report.report_id},
+    )
+    notify_role(
+        db,
+        REVIEWER,
+        "بلاغ حالة طارئة",
+        f"قدّم «{student.full_name}» بلاغ حالة طارئة.",
+        exclude_user_id=actor.user_id,
     )
     return _report_dict(db, report)
 
@@ -357,6 +383,14 @@ def review_report(db, ctx, report_id, action):
             "to_status": target.value,
         },
     )
+    student = db.get(Student, report.student_id)
+    if student is not None:
+        notify_user(
+            db,
+            user_id=student.user_id,
+            title="تحديث البلاغ الطارئ",
+            message=f"بلاغك الطارئ أصبح {target.value}.",
+        )
     return _report_dict(db, report)
 
 

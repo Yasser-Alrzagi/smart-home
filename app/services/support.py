@@ -31,6 +31,7 @@ from app.models.enums import (
 )
 from app.services.accounts import account_write
 from app.services.audit import record_event
+from app.services.notifications import notify_role, notify_user
 from app.services.sessions import lock_self
 
 COMPLAINT_HANDLER = R.housing_administration
@@ -140,6 +141,13 @@ def create_complaint(db, ctx, data):
         target_id=student.user_id,
         details={"complaint_id": complaint.complaint_id},
     )
+    notify_role(
+        db,
+        R.housing_administration,
+        "شكوى جديدة",
+        f"وصلت شكوى من «{student.full_name}» ({complaint.category}).",
+        exclude_user_id=actor.user_id,
+    )
     return _complaint_dict(db, complaint)
 
 
@@ -211,6 +219,14 @@ def update_complaint(db, ctx, complaint_id, action, resolution=None):
             "to_status": target.value,
         },
     )
+    student = db.get(Student, complaint.student_id)
+    if student is not None:
+        notify_user(
+            db,
+            user_id=student.user_id,
+            title="تحديث شكواك",
+            message=f"شكواك ({complaint.category}) أصبحت {target.value}.",
+        )
     return _complaint_dict(db, complaint)
 
 
@@ -278,6 +294,13 @@ def create_maintenance(db, ctx, data):
         actor=actor,
         target_id=student.user_id,
         details={"maintenance_request_id": request.request_id},
+    )
+    notify_role(
+        db,
+        R.maintenance_officer,
+        "طلب صيانة جديد",
+        f"وصل طلب صيانة من «{student.full_name}» ({data.problem_type}).",
+        exclude_user_id=actor.user_id,
     )
     return _maintenance_dict(db, request)
 
@@ -353,4 +376,12 @@ def update_maintenance(db, ctx, request_id, action, resolution=None):
             "to_status": target.value,
         },
     )
+    student = db.get(Student, request.student_id)
+    if student is not None:
+        notify_user(
+            db,
+            user_id=student.user_id,
+            title="تحديث طلب الصيانة",
+            message=f"طلب الصيانة ({request.problem_type}) أصبح {target.value}.",
+        )
     return _maintenance_dict(db, request)

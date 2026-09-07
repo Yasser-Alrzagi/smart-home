@@ -34,6 +34,7 @@ from app.core.database import SessionLocal
 from app.core.database import get_named_lock as get_lock, release_named_lock
 from app.services.accounts import account_write
 from app.services.audit import record_event
+from app.services.notifications import notify_role, notify_user
 from app.services.sessions import lock_self
 
 # service type -> roles allowed to own it
@@ -433,6 +434,25 @@ def register(db, ctx, data):
                         "registration_count": _count_registered(tx, period.period_id),
                     },
                 )
+                notify_user(
+                    tx,
+                    user_id=student.user_id,
+                    title="تم تسجيلك في خدمة",
+                    message=(
+                        f"سُجّل تسجيلك في خدمة «{service.name}» "
+                        f"للفترة {period.start_date} → {period.end_date}."
+                    ),
+                )
+                notify_role(
+                    tx,
+                    service.managed_by_role,
+                    "تسجيل جديد في خدمة",
+                    (
+                        f"سجّل طالب في خدمة «{service.name}» "
+                        f"(الفترة {period.start_date} → {period.end_date})."
+                    ),
+                    exclude_user_id=actor.user_id,
+                )
                 result = _registration_dict(tx, registration)
             finally:
                 # MySQL server-side named locks are per-connection and survive
@@ -484,5 +504,14 @@ def cancel_registration(db, ctx, registration_id):
             "registration_id": registration.registration_id,
             "period_id": period.period_id,
         },
+    )
+    notify_user(
+        db,
+        user_id=student.user_id,
+        title="أُلغي تسجيلك",
+        message=(
+            f"أُلغي تسجيلك في خدمة «{_service(db, period.service_id).name}» "
+            f"للفترة {period.start_date} → {period.end_date}."
+        ),
     )
     return _registration_dict(db, registration)

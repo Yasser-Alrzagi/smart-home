@@ -4,7 +4,7 @@
   let token = null;
   let generation = 0;
   let viewEpoch = 0;
-  const state = { me: null, profile: null, policy: null, page: 'dashboard', offset: 0, current: null };
+  const state = { me: null, profile: null, policy: null, page: 'dashboard', offset: 0, current: null, unread: 0 };
   const $ = id => document.getElementById(id);
   const roles = {'Student':'طالب','Student Affairs':'شؤون الطلاب','Housing Administration':'إدارة السكن','System Administrator':'مسؤول النظام','Maintenance Officer':'مسؤول الصيانة','Activity Officer':'مسؤول الأنشطة','Cleaning Officer':'مسؤول النظافة','Food Officer':'مسؤول التغذية','Sports Officer':'مسؤول الرياضة'};
   const statuses = {'Draft':'مسودة','Submitted':'تم التقديم','Under Review':'قيد المراجعة','Pending Documents':'بانتظار الاستكمال','Ready for Decision':'جاهز للقرار','Accepted':'مقبول','Rejected':'مرفوض'};
@@ -20,7 +20,8 @@
   const permissionStatuses = {'Pending':'قيد الموافقة','Approved':'موافق عليه','Rejected':'مرفوض','Cancelled':'ملغي'};
   const emergencyStatuses = {'Reported':'مبلّغ','Under Review':'قيد المراجعة','Verified':'موثّق','Closed':'مغلق'};
   const absenceTypes = {'Permission':'إذن غياب','Emergency':'حالة طارئة','Unauthorized':'غياب غير مصرح'};
-  const tr = value => statuses[value] || roles[value] || documents[value] || roomStatuses[value] || assignmentStatuses[value] || serviceTypes[value] || periodStatuses[value] || registrationStatuses[value] || complaintStatuses[value] || maintenanceStatuses[value] || permissionStatuses[value] || emergencyStatuses[value] || absenceTypes[value] || value || '—';
+  const notificationStatuses = {'Unread':'غير مقروء','Read':'مقروء'};
+  const tr = value => statuses[value] || roles[value] || documents[value] || roomStatuses[value] || assignmentStatuses[value] || serviceTypes[value] || periodStatuses[value] || registrationStatuses[value] || complaintStatuses[value] || maintenanceStatuses[value] || permissionStatuses[value] || emergencyStatuses[value] || absenceTypes[value] || notificationStatuses[value] || value || '—';
   const date = value => value ? new Date(value.endsWith('Z') ? value : value+'Z').toLocaleString('ar-YE', {dateStyle:'medium',timeStyle:'short'}) : '—';
   function h(tag, attrs={}, ...children) {
     const node = document.createElement(tag);
@@ -62,7 +63,7 @@
   const field=(label,name,value='',type='text',attrs={})=>h('label',{},label,h('input',{name,type,value,required:true,...attrs}));
   const heading=(title,sub,action=null)=>h('div',{class:'page-head'},h('div',{},h('h1',{},title),h('p',{},sub)),action || h('span',{class:'date-label'},new Date().toLocaleDateString('ar-YE',{weekday:'long',day:'numeric',month:'long'})));
   function nav() {
-    const items=state.me.must_change_password?[['security','◈','تغيير كلمة المرور']]:[['dashboard','⌂','لوحة المتابعة'],...(state.me.role==='Student'?[['profile','♙','ملفي الطلابي'],['room','▣','غرفتي'],['services','⊞','الخدمات'],['support','✉','الدعم والبلاغات'],['attendance','⚑','الغياب والإذن']]:[]),...(['Student','Student Affairs','Housing Administration'].includes(state.me.role)?[['applications','▤',state.me.role==='Student'?'طلبات السكن':'مراجعة الطلبات']]:[]),...(['Activity Officer','Food Officer','Sports Officer'].includes(state.me.role)?[['services','⊞','إدارة الخدمات'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Housing Administration'?[['housing','▦','السكن والغرف'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Student Affairs'?[['attendance','⚑','الموافقات والغياب']]:[]),...(state.me.role==='Maintenance Officer'?[['support','✉','طلبات الصيانة']]:[]),...(state.me.role==='System Administrator'?[['accounts','♧','إدارة الحسابات']]:[]),['security','◈','الأمان والجلسات']];
+    const items=state.me.must_change_password?[['security','◈','تغيير كلمة المرور']]:[['dashboard','⌂','لوحة المتابعة'],...(state.me.role==='Student'?[['profile','♙','ملفي الطلابي'],['room','▣','غرفتي'],['services','⊞','الخدمات'],['support','✉','الدعم والبلاغات'],['attendance','⚑','الغياب والإذن']]:[]),...(['Student','Student Affairs','Housing Administration'].includes(state.me.role)?[['applications','▤',state.me.role==='Student'?'طلبات السكن':'مراجعة الطلبات']]:[]),...(['Activity Officer','Food Officer','Sports Officer'].includes(state.me.role)?[['services','⊞','إدارة الخدمات'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Housing Administration'?[['housing','▦','السكن والغرف'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Student Affairs'?[['attendance','⚑','الموافقات والغياب']]:[]),...(state.me.role==='Maintenance Officer'?[['support','✉','طلبات الصيانة']]:[]),...(state.me.role==='System Administrator'?[['accounts','♧','إدارة الحسابات']]:[]),['notifications','◌','الإشعارات'+(state.unread?' ('+state.unread+')':'')],['security','◈','الأمان والجلسات']];
     $('navigation').replaceChildren(...items.map(([key,icon,label])=>buttonNav(key,icon,label)));
     $('identityName').textContent=state.me.username; $('identityRole').textContent=tr(state.me.role); $('avatar').textContent=state.me.username.slice(0,1);
   }
@@ -70,11 +71,11 @@
   async function go(page) {
     const epoch=++viewEpoch;
     state.page=state.me.must_change_password?'security':page; state.offset=0; $('message').hidden=true; nav();
-    $('pageLabel').textContent={dashboard:'لوحة المتابعة',profile:'الملف الطلابي',room:'غرفتي',services:'الخدمات والتسجيلات',support:'الدعم والبلاغات',attendance:'الموافقات والغياب',applications:'طلبات السكن',housing:'السكن والغرف',accounts:'إدارة الحسابات',security:'الأمان والجلسات'}[state.page];
+    $('pageLabel').textContent={dashboard:'لوحة المتابعة',profile:'الملف الطلابي',room:'غرفتي',services:'الخدمات والتسجيلات',support:'الدعم والبلاغات',attendance:'الموافقات والغياب',applications:'طلبات السكن',housing:'السكن والغرف',accounts:'إدارة الحسابات',notifications:'الإشعارات',security:'الأمان والجلسات'}[state.page];
     $('page').replaceChildren(h('div',{class:'empty'},'جارٍ تحميل البيانات…'));
-    try { await ({dashboard,profile:profilePage,room:myRoomPage,services:servicesPage,support:supportPage,attendance:attendancePage,applications:applicationsPage,housing:housingPage,accounts:accountsPage,security:securityPage}[state.page])(); } catch(error){if(state.me && epoch===viewEpoch) $('page').replaceChildren(h('p',{class:'error'},error.message));}
+    try { await ({dashboard,profile:profilePage,room:myRoomPage,services:servicesPage,support:supportPage,attendance:attendancePage,applications:applicationsPage,housing:housingPage,accounts:accountsPage,notifications:notificationsPage,security:securityPage}[state.page])(); } catch(error){if(state.me && epoch===viewEpoch) $('page').replaceChildren(h('p',{class:'error'},error.message));}
   }
-  $('loginForm').addEventListener('submit',async e=>{e.preventDefault(); const submit=e.target.querySelector('button');submit.disabled=true;$('loginError').textContent=''; token=null; const form=new FormData(e.target); try{const data=await api('/auth/login/access-token',{method:'POST',body:form});token=data.access_token;generation++;state.me=await api('/auth/users/me');e.target.reset();$('loginView').hidden=true;$('portal').hidden=false;state.policy=null;await go('dashboard');}catch(error){localLogout(error.message);}finally{submit.disabled=false;}});
+  $('loginForm').addEventListener('submit',async e=>{e.preventDefault(); const submit=e.target.querySelector('button');submit.disabled=true;$('loginError').textContent=''; token=null; const form=new FormData(e.target); try{const data=await api('/auth/login/access-token',{method:'POST',body:form});token=data.access_token;generation++;state.me=await api('/auth/users/me');try{state.unread=(await api('/notifications/unread-count')).unread;}catch{state.unread=0;}e.target.reset();$('loginView').hidden=true;$('portal').hidden=false;state.policy=null;await go('dashboard');}catch(error){localLogout(error.message);}finally{submit.disabled=false;}});
   $('logoutButton').addEventListener('click',async()=>{const current=generation;try{await api('/auth/logout',{method:'POST'});}catch{}if(generation===current)localLogout();});
   $('closeDialog').addEventListener('click',()=>$('detailDialog').close());
   $('detailDialog').addEventListener('close',()=>{if(!state.me)return; const refresh=state.page==='applications'?applicationsPage:state.page==='dashboard'?dashboard:null; if(refresh)refresh().catch(e=>{if(state.me)notify(e.message,true);});});
@@ -262,6 +263,16 @@
     const reportTable=reports.items.length?dataTable(['الطالب','الوصف','الحالة','الخروج',''],reports.items.map(r=>[r.student_name||'—',r.description,d5badge(r.status,'Verified','Reported','Closed'),r.exit_verified?'موثّق':'لا',r.status==='Reported'?reportAction(r,'start','بدء المراجعة','primary'):r.status==='Under Review'?reportAction(r,'verify','توثيق الخروج','primary'):r.status==='Verified'?reportAction(r,'close','إغلاق'):''])):empty('لا بلاغات طارئة','بلاغات الخروج الطارئ تظهر هنا.');
     const absenceTable=absences.items.length?dataTable(['الطالب','النوع','الفترة','المصدر'],absences.items.map(a=>[a.student_name||'—',tr(a.absence_type),a.start_date+(a.end_date?' → '+a.end_date:''),a.source||'—'])):empty('لا غياب مسجل','سجل الغياب الموثق من الإذونات والبلاغات.');
     renderPage('attendance',epoch,heading('الموافقات والغياب','إذن الغياب، بلاغات الخروج الطارئ، وسجل الغياب.'),panel('طلبات الإذن',permissionTable),panel('البلاغات الطارئة',reportTable),panel('سجل الغياب',absenceTable));
+  }
+  async function notificationsPage(){const epoch=viewEpoch;if(state.page!=='notifications'||!state.me)return;
+    const list=await api('/notifications/my?limit=50');
+    try{state.unread=(await api('/notifications/unread-count')).unread;nav();}catch{}
+    const rows=list.items.map(n=>[n.title,n.message,date(n.created_at),
+      n.status==='Unread'?h('span',{class:'badge waiting'},tr(n.status)):h('span',{class:'badge accepted'},tr(n.status)),
+      n.status==='Unread'?button('تعليم كمقروء',async()=>{try{await api('/notifications/'+n.notification_id+'/read',{method:'POST'});await notificationsPage();}catch(err){notify(err.message,true);}},'secondary'):'']);
+    const table=list.items.length?dataTable(['العنوان','الرسالة','الوقت','الحالة',''],rows):empty('لا إشعارات','ستصلك هنا نتائج القرارات وتحديثات الخدمات والشكاوى.');
+    renderPage('notifications',epoch,heading('الإشعارات','تحديثات القرارات والخدمات والبلاغات التي تخصك.')
+      ,panel('إشعاراتي',table,h('div',{class:'actions'},state.unread?button('تعليم الكل كمقروء',async()=>{try{await api('/notifications/read-all',{method:'POST'});state.unread=0;await notificationsPage();}catch(err){notify(err.message,true);}},'primary'):'')));
   }
   async function securityPage(){const epoch=viewEpoch;if(state.page!=='security'||!state.me)return;const sessions=await api('/auth/sessions');const form=h('form',{},field('كلمة المرور الحالية','current_password','','password',{autocomplete:'current-password',maxlength:256}),field('كلمة المرور الجديدة','new_password','','password',{autocomplete:'new-password',minlength:12,maxlength:256}),h('button',{class:'primary',type:'submit'},'تغيير الكلمة والخروج من جميع الجلسات'));
     form.addEventListener('submit',async e=>{e.preventDefault();const b=form.querySelector('button');b.disabled=true;try{await api('/auth/change-password',{method:'POST',body:Object.fromEntries(new FormData(form))});localLogout('تم تغيير كلمة المرور. سجّل الدخول بكلمتك الجديدة.');}catch(err){notify(err.message,true);}finally{b.disabled=false;}});

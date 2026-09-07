@@ -1,10 +1,10 @@
 # Smart Student Housing — سكن بازرعة الطلابي
 
-**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance are implemented, with a fully Arabic browser portal. Cleaning AI is still to come.**
+**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance + D6 notifications are implemented, with a fully Arabic browser portal. Attendance records and cleaning AI are still to come.**
 
 - 27 ORM tables: domain tables, identity/security, application history, and the housing structure.
 - Identity, admission and **housing** HTTP APIs, health/readiness, and an Arabic browser portal at `/app` including a "غرفتي" student view and a full Housing Administration workspace.
-- Student profile, required documents, Student Affairs review, Housing Administration decisions, **room allocation, transfers and ended-assignment history** are implemented. No public registration, service registration, or BFS/A* implementation yet.
+- Student profile, required documents, Student Affairs review, Housing Administration decisions, **room allocation, transfers and ended-assignment history** are implemented. No public registration, attendance-records, officer dashboards, or BFS/A* implementation yet.
 - Approved provisioning policy: **only the System Administrator creates accounts and assigns roles**. Other roles manage only their own account/session through self-service endpoints.
 
 ## D3: open the Arabic portal
@@ -88,10 +88,9 @@ Endpoints (`/api/v1`): `GET/POST /services`, `PATCH /services/{id}`, `GET/POST /
 `GET /emergency/my`, `POST /emergency/{id}/action`, `GET /absences`, `GET /absences/my`.
 
 D5 adds **no migration** either: the service, complaint, maintenance, permission, emergency and
-absence tables already exist since D1, and `SCHEMA_HEAD` stays at `d3b7a21c8f04`; the
-`notifications` table also exists but its API and portal UI are still pending. Full Arabic policy
-and tested delivery: **[docs/services-d5.md](docs/services-d5.md)** and
-**[docs/d5-results.md](docs/d5-results.md)**.
+absence tables already exist since D1, and `SCHEMA_HEAD` stays at `d3b7a21c8f04`.
+Full Arabic policy and tested delivery: **[docs/services-d5.md](docs/services-d5.md)**,
+**[docs/d5-results.md](docs/d5-results.md)** and **[docs/notifications-d6.md](docs/notifications-d6.md)**.
 
 ## Stack and layout
 
@@ -308,6 +307,7 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 ## Project documentation
 
+- [D6 notification policy — Arabic](docs/notifications-d6.md)
 - [D5 services/support/attendance policy — Arabic](docs/services-d5.md)
 - [D5 tested delivery results — Arabic](docs/d5-results.md)
 - [D4 housing policy — Arabic](docs/housing-d4.md)
@@ -323,4 +323,5 @@ Historical generator text and `_offline_head.sql` are not active migrations. The
 refuses to overwrite revisions; its source is archived as non-executable text under
 `alembic/superseded/`. D4 (room allocation and transfers) and D5 (services, complaints,
 maintenance, permissions/absences and emergency reports, with Arabic portal views) are delivered;
-the `notifications` API/UI and cleaning AI (BFS/A*) follow later.
+D6 (notifications mailbox with event-driven delivery) is delivered; attendance records,
+officer dashboards and cleaning AI (BFS/A*) follow later.

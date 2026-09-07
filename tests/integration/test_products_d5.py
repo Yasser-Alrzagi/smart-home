@@ -29,6 +29,7 @@ def _clean_d5_tables():
         db.execute(text("DELETE FROM permission_requests"))
         db.execute(text("DELETE FROM emergency_reports"))
         db.execute(text("DELETE FROM student_absences"))
+        db.execute(text("DELETE FROM notifications"))
         db.execute(text("DELETE FROM audit_events"))
         db.execute(text("DELETE FROM auth_sessions"))
         db.execute(text("DELETE FROM users"))

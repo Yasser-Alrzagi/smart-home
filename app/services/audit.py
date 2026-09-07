@@ -34,6 +34,10 @@ ALLOWED_DETAILS = {
     "permission_id",
     "emergency_report_id",
     "absence_id",
+    # D6 notifications: identifiers and counts only.
+    "notification_id",
+    "count",
+    "read",
 }
 
 
