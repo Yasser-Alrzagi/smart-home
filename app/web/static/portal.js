@@ -22,7 +22,9 @@
   const absenceTypes = {'Permission':'إذن غياب','Emergency':'حالة طارئة','Unauthorized':'غياب غير مصرح'};
   const attendanceStatuses = {'Present':'حاضر','Late':'متأخر','Absent':'غائب','Excused':'معذور'};
   const notificationStatuses = {'Unread':'غير مقروء','Read':'مقروء'};
-  const tr = value => statuses[value] || roles[value] || documents[value] || roomStatuses[value] || assignmentStatuses[value] || serviceTypes[value] || periodStatuses[value] || registrationStatuses[value] || complaintStatuses[value] || maintenanceStatuses[value] || permissionStatuses[value] || emergencyStatuses[value] || absenceTypes[value] || attendanceStatuses[value] || notificationStatuses[value] || value || '—';
+  const cycleStatuses = {'Draft':'مسودة','Optimizing':'قيد التحسين','Pending Approval':'بانتظار الموافقة','Approved':'معتمدة','Active':'نشطة','Completed':'مكتملة'};
+  const cleaningStatuses = {'Pending':'معلقة','In Progress':'جارية','Completed':'منجزة','Skipped':'مُسقطة'};
+  const tr = value => statuses[value] || roles[value] || documents[value] || roomStatuses[value] || assignmentStatuses[value] || serviceTypes[value] || periodStatuses[value] || registrationStatuses[value] || complaintStatuses[value] || maintenanceStatuses[value] || permissionStatuses[value] || emergencyStatuses[value] || absenceTypes[value] || attendanceStatuses[value] || cycleStatuses[value] || cleaningStatuses[value] || notificationStatuses[value] || value || '—';
   const date = value => value ? new Date(value.endsWith('Z') ? value : value+'Z').toLocaleString('ar-YE', {dateStyle:'medium',timeStyle:'short'}) : '—';
   function h(tag, attrs={}, ...children) {
     const node = document.createElement(tag);
@@ -64,7 +66,7 @@
   const field=(label,name,value='',type='text',attrs={})=>h('label',{},label,h('input',{name,type,value,required:true,...attrs}));
   const heading=(title,sub,action=null)=>h('div',{class:'page-head'},h('div',{},h('h1',{},title),h('p',{},sub)),action || h('span',{class:'date-label'},new Date().toLocaleDateString('ar-YE',{weekday:'long',day:'numeric',month:'long'})));
   function nav() {
-    const items=state.me.must_change_password?[['security','◈','تغيير كلمة المرور']]:[['dashboard','⌂','لوحة المتابعة'],...(state.me.role==='Student'?[['profile','♙','ملفي الطلابي'],['room','▣','غرفتي'],['services','⊞','الخدمات'],['support','✉','الدعم والبلاغات'],['attendance','⚑','الغياب والإذن']]:[]),...(['Student','Student Affairs','Housing Administration'].includes(state.me.role)?[['applications','▤',state.me.role==='Student'?'طلبات السكن':'مراجعة الطلبات']]:[]),...(['Activity Officer','Food Officer','Sports Officer'].includes(state.me.role)?[['services','⊞','إدارة الخدمات'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Housing Administration'?[['housing','▦','السكن والغرف'],['daily','▤','الحضور اليومي'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Student Affairs'?[['attendance','⚑','الموافقات والغياب']]:[]),...(state.me.role==='Maintenance Officer'?[['support','✉','طلبات الصيانة']]:[]),...(state.me.role==='System Administrator'?[['accounts','♧','إدارة الحسابات']]:[]),['notifications','◌','الإشعارات'+(state.unread?' ('+state.unread+')':'')],['security','◈','الأمان والجلسات']];
+    const items=state.me.must_change_password?[['security','◈','تغيير كلمة المرور']]:[['dashboard','⌂','لوحة المتابعة'],...(state.me.role==='Student'?[['profile','♙','ملفي الطلابي'],['room','▣','غرفتي'],['services','⊞','الخدمات'],['support','✉','الدعم والبلاغات'],['attendance','⚑','الغياب والإذن'],['mytasks','☑','مهام النظافة']]:[]),...(['Student','Student Affairs','Housing Administration'].includes(state.me.role)?[['applications','▤',state.me.role==='Student'?'طلبات السكن':'مراجعة الطلبات']]:[]),...(['Activity Officer','Food Officer','Sports Officer'].includes(state.me.role)?[['services','⊞','إدارة الخدمات'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Housing Administration'?[['housing','▦','السكن والغرف'],['daily','▤','الحضور اليومي'],['support','✉','البلاغات والصيانة']]:[]),...(state.me.role==='Student Affairs'?[['attendance','⚑','الموافقات والغياب']]:[]),...(state.me.role==='Maintenance Officer'?[['support','✉','طلبات الصيانة']]:[]),...(state.me.role==='Cleaning Officer'?[['cleaning','✦','النظافة AI']]:[]),...(state.me.role==='System Administrator'?[['accounts','♧','إدارة الحسابات']]:[]),['notifications','◌','الإشعارات'+(state.unread?' ('+state.unread+')':'')],['security','◈','الأمان والجلسات']];
     $('navigation').replaceChildren(...items.map(([key,icon,label])=>buttonNav(key,icon,label)));
     $('identityName').textContent=state.me.username; $('identityRole').textContent=tr(state.me.role); $('avatar').textContent=state.me.username.slice(0,1);
   }
@@ -72,9 +74,9 @@
   async function go(page) {
     const epoch=++viewEpoch;
     state.page=state.me.must_change_password?'security':page; state.offset=0; $('message').hidden=true; nav();
-    $('pageLabel').textContent={dashboard:'لوحة المتابعة',profile:'الملف الطلابي',room:'غرفتي',services:'الخدمات والتسجيلات',support:'الدعم والبلاغات',attendance:'الموافقات والغياب',applications:'طلبات السكن',housing:'السكن والغرف',daily:'الحضور اليومي',accounts:'إدارة الحسابات',notifications:'الإشعارات',security:'الأمان والجلسات'}[state.page];
+    $('pageLabel').textContent={dashboard:'لوحة المتابعة',profile:'الملف الطلابي',room:'غرفتي',services:'الخدمات والتسجيلات',support:'الدعم والبلاغات',attendance:'الموافقات والغياب',applications:'طلبات السكن',housing:'السكن والغرف',daily:'الحضور اليومي',accounts:'إدارة الحسابات',notifications:'الإشعارات',security:'الأمان والجلسات',cleaning:'النظافة AI',mytasks:'مهام النظافة'}[state.page];
     $('page').replaceChildren(h('div',{class:'empty'},'جارٍ تحميل البيانات…'));
-    try { await ({dashboard,profile:profilePage,room:myRoomPage,services:servicesPage,support:supportPage,attendance:attendancePage,applications:applicationsPage,housing:housingPage,daily:dailyAttendancePage,accounts:accountsPage,notifications:notificationsPage,security:securityPage}[state.page])(); } catch(error){if(state.me && epoch===viewEpoch) $('page').replaceChildren(h('p',{class:'error'},error.message));}
+    try { await ({dashboard,profile:profilePage,room:myRoomPage,services:servicesPage,support:supportPage,attendance:attendancePage,applications:applicationsPage,housing:housingPage,daily:dailyAttendancePage,accounts:accountsPage,notifications:notificationsPage,security:securityPage,cleaning:cleaningPage,mytasks:myTasksPage}[state.page])(); } catch(error){if(state.me && epoch===viewEpoch) $('page').replaceChildren(h('p',{class:'error'},error.message));}
   }
   $('loginForm').addEventListener('submit',async e=>{e.preventDefault(); const submit=e.target.querySelector('button');submit.disabled=true;$('loginError').textContent=''; token=null; const form=new FormData(e.target); try{const data=await api('/auth/login/access-token',{method:'POST',body:form});token=data.access_token;generation++;state.me=await api('/auth/users/me');try{state.unread=(await api('/notifications/unread-count')).unread;}catch{state.unread=0;}e.target.reset();$('loginView').hidden=true;$('portal').hidden=false;state.policy=null;await go('dashboard');}catch(error){localLogout(error.message);}finally{submit.disabled=false;}});
   $('logoutButton').addEventListener('click',async()=>{const current=generation;try{await api('/auth/logout',{method:'POST'});}catch{}if(generation===current)localLogout();});
@@ -293,6 +295,37 @@
     dateInput.addEventListener('change',()=>{pending.length=0;renderPending();loadDay().catch(e=>notify(e.message,true));});
     renderPending();await loadStudents();await loadDay();
   }
+  const cycleBadge=st=>h('span',{class:'badge '+(st==='Active'?'accepted':st==='Completed'?'waiting':'')},tr(st));
+  async function cleaningPage(){const epoch=viewEpoch;if(state.page!=='cleaning'||!state.me)return;
+    const [floors,page]=await Promise.all([api('/cleaning/floors'),api('/cleaning/cycles')]);
+    const floorSel=h('select',{name:'floor_id','aria-label':'المبنى/الطابق'},h('option',{value:''},'اختر المبنى/الطابق'),...floors.map(f=>h('option',{value:f.floor_id},f.building_name+' · الطابق '+f.floor_number)));
+    const form=h('form',{class:'inline-form'},floorSel,h('input',{type:'date',name:'start_date','aria-label':'من'}),h('input',{type:'date',name:'end_date','aria-label':'إلى'}),h('button',{type:'submit',class:'primary'},'إنشاء دورة'));
+    form.addEventListener('submit',async e=>{e.preventDefault();const b=form.querySelector('button');b.disabled=true;try{const fd=Object.fromEntries(new FormData(form));if(!fd.floor_id||!fd.start_date||!fd.end_date){notify('أكمل الحقول.',true);return;}await api('/cleaning/cycles',{method:'POST',body:{floor_id:fd.floor_id,start_date:fd.start_date,end_date:fd.end_date}});notify('أُنشئت الدورة.');await cleaningPage();}catch(err){notify(err.message,true);}finally{b.disabled=false;}});
+    const table=page.items.length?dataTable(['المبنى','الفترة','الحالة','المهام',''],page.items.map(c=>[c.building_name+' · ط'+c.floor_number,c.start_date+' → '+(c.end_date||'—'),cycleBadge(c.status),c.assignments_count||0,button('التفاصيل',()=>openCycle(c.cycle_id),'primary')])):empty('لا دورات بعد','أنشئ دورة نظافة لطابق، ثم شغّل BFS أو A* وقارن النتائج.');
+    renderPage('cleaning',epoch,heading('النظافة الذكية','دورات تنظيف الطوابق: تشغيل BFS/A*، مقارنة النتائج، الاعتماد والتفعيل.'),panel('دورة جديدة',form,h('p',{class:'hint'},'تشمل الدورة كل غرف الطابق لكل يوم في الفترة، ويتوزع العمل على المقيمين بضمان مهمة واحدة يومياً.'),h('p',{class:'hint'},'إن لم يكن في الطابق مقيمون، تُرفض الدورة (لا جدوى).')),panel('الدورات',table));
+  }
+  async function openCycle(id){const d=await api('/cleaning/cycles/'+id);
+    const canRun=['Draft','Optimizing'].includes(d.status);
+    const runs=d.runs.length?dataTable(['الخوارزمية','التكلفة','العدل','الجدوى','العقد','زمن (ms)',''],d.runs.map(r=>[tr(r.algorithm),r.total_cost,r.fairness_score,r.feasibility_rate,r.nodes_expanded,r.execution_time,canRun?button('اعتماد هذا الحل',()=>approveRun(id,r.run_id),'primary'):''])):h('p',{class:'muted'},'لم تُشغّل أي خوارزمية بعد.');
+    const tasks=d.assignments.length?dataTable(['الطالب','المهمة','التاريخ','الحالة',''],d.assignments.map(a=>[a.student_name,a.task_description,a.assignment_date,tr(a.status),['Pending','In Progress'].includes(a.status)?button('تخطي',()=>skipTask(a),'danger'):''])):h('p',{class:'muted'},'لا مهام بعد — اعتمد نتيجة تشغيل لتوليدها.');
+    dialog('دورة نظافة — '+d.building_name+' · الطابق '+d.floor_number,h('p',{},d.start_date+' → '+(d.end_date||'—')),cycleBadge(d.status),
+      panel('التشغيل (قارن BFS و A*)',canRun?h('div',{class:'actions'},button('تشغيل BFS',()=>runAlgo(id,'BFS'),'primary'),button('تشغيل A*',()=>runAlgo(id,'A*'),'primary')):h('span',{hidden:true}),runs),
+      d.status==='Approved'?h('div',{class:'actions'},button('تفعيل الدورة وإشعار الطلاب',()=>activateCycle(id),'primary'),button('إكمال الدورة',()=>completeCycle(id))):'',
+      d.status==='Active'?h('div',{class:'actions'},button('إكمال الدورة',()=>completeCycle(id),'primary')):'',
+      panel('المهام',tasks),
+      h('div',{class:'actions'},button('إغلاق',()=>$('detailDialog').close())));
+  }
+  async function runAlgo(id,algo){try{await api('/cleaning/cycles/'+id+'/optimize',{method:'POST',body:{algorithm:algo}});notify('اكتمل التشغيل ('+algo+').');await openCycle(id);}catch(err){notify(err.message,true);}}
+  async function approveRun(id,runId){try{await api('/cleaning/cycles/'+id+'/approve',{method:'POST',body:{run_id:runId}});notify('اعتُمدت النتيجة ووُلدت المهام.');await openCycle(id);}catch(err){notify(err.message,true);}}
+  async function activateCycle(id){try{await api('/cleaning/cycles/'+id+'/activate',{method:'POST'});notify('فُعّلت الدورة وأُشعر الطلاب.');await openCycle(id);await cleaningPage();}catch(err){notify(err.message,true);}}
+  async function completeCycle(id){try{await api('/cleaning/cycles/'+id+'/complete',{method:'POST'});notify('اكتملت الدورة.');await openCycle(id);await cleaningPage();}catch(err){notify(err.message,true);}}
+  async function skipTask(a){if(!window.confirm('تخطي مهمة '+a.student_name+' («'+a.task_description+'»)؟'))return;try{await api('/cleaning/assignments/'+a.assignment_id+'/skip',{method:'POST'});notify('سُجل التخطي.');await openCycle(a.cycle_id);}catch(err){notify(err.message,true);}}
+  async function myTasksPage(){const epoch=viewEpoch;if(state.page!=='mytasks'||!state.me)return;
+    const page=await api('/cleaning/my?limit=50');
+    const rows=page.items.length?dataTable(['المهمة','التاريخ','الحالة',''],page.items.map(a=>[a.task_description,a.assignment_date,tr(a.status),a.status==='Pending'?button('بدء التنفيذ',()=>actTask(a,'start'),'primary'):a.status==='In Progress'?button('إتمام المهمة',()=>actTask(a,'complete'),'primary'):''])):empty('لا مهام','تُسند مهام النظافة إليك بعد اعتماد دورات النظافة وتفعيلها.');
+    renderPage('mytasks',epoch,heading('مهام النظافة','مهامك المعتمدة في دورات تنظيف الطوابق.'),panel('مهامي',rows,h('p',{class:'hint'},'تسجيل بدء/إتمام مهمتك موثق، ويُشعر مسؤول النظافة عند الإتمام.')));
+  }
+  async function actTask(a,action){try{await api('/cleaning/my/'+a.assignment_id,{method:'POST',body:{action}});notify(action==='start'?'بدأت المهمة — بالتوفيق.':'أنجزت المهمة — شكراً لك.');await myTasksPage();}catch(err){notify(err.message,true);}}
   async function notificationsPage(){const epoch=viewEpoch;if(state.page!=='notifications'||!state.me)return;
     const list=await api('/notifications/my?limit=50');
     try{state.unread=(await api('/notifications/unread-count')).unread;nav();}catch{}

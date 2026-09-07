@@ -1,6 +1,6 @@
 # Smart Student Housing — سكن بازرعة الطلابي
 
-**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance + D6 notifications + D7 daily attendance ledger + D8 role-scoped officer dashboards are implemented, with a fully Arabic browser portal. Cleaning AI (BFS/A*) is still to come.**
+**All milestones are delivered: D1 foundation, D2 identity, D3 two-stage admissions, D4 room allocation and transfers, D5 services/support/attendance, D6 notifications, D7 daily attendance ledger, D8 role-scoped officer dashboards and D9 cleaning AI (BFS/A*) — in a fully Arabic browser portal.**
 
 - 27 ORM tables: domain tables, identity/security, application history, and the housing structure.
 - Identity, admission and **housing** HTTP APIs, health/readiness, and an Arabic browser portal at `/app` including a "غرفتي" student view and a full Housing Administration workspace.
@@ -132,6 +132,28 @@ no schema change; the same fixed role→permission matrix decides what each role
 Endpoints: `GET /api/v1/dashboards/me`.
 Full Arabic policy and tested delivery: **[docs/dashboards-d8.md](docs/dashboards-d8.md)**
 and **[docs/d8-results.md](docs/d8-results.md)**.
+
+## D9: cleaning AI (BFS/A*)
+
+Cleaning Officer creates a cycle per floor and date range; every room of the floor per day is one
+task shared among the resident students under two constraints (one task per student per day, a
+fairness cap). Both algorithms run and are stored with metrics (cost, fairness, feasibility,
+expanded nodes, milliseconds) so the officer compares and approves one; approval materializes the
+assignments in the same transaction, activation notifies every assigned student (D6), and students
+run their own tasks (start/complete, audited) while the officer may skip.
+
+| Algorithm | Behavior |
+|---|---|
+| BFS | One layer per day; the least-loaded students take the day's tasks. Deterministic, cheap, balanced — not proven optimal |
+| A* | Optimal search over day-level choices minimizing (max load, sum of squared loads) with an admissible heuristic; never worse than BFS; capped at 200k states |
+
+Cycle lifecycle: `Draft` → `Optimizing` → `Approved` → `Active` → `Completed`; infeasible instances
+(a day with more tasks than residents, or no residents) are refused with 422 and a clear reason.
+Endpoints (`/api/v1`): `GET /cleaning/floors`, `GET/POST /cleaning/cycles`,
+`GET /cleaning/cycles/{id}`, `POST /cleaning/cycles/{id}/optimize|approve|activate|complete`,
+`GET /cleaning/my`, `POST /cleaning/my/{id}`, `POST /cleaning/assignments/{id}/skip`.
+Full Arabic policy and tested delivery: **[docs/cleaning-d9.md](docs/cleaning-d9.md)**
+and **[docs/d9-results.md](docs/d9-results.md)**.
 
 ## Stack and layout
 
@@ -348,10 +370,12 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 ## Project documentation
 
+- [D9 cleaning AI policy — Arabic](docs/cleaning-d9.md)
 - [D8 dashboard policy — Arabic](docs/dashboards-d8.md)
 - [D7 daily attendance policy — Arabic](docs/attendance-daily-d7.md)
 - [D6 notification policy — Arabic](docs/notifications-d6.md)
 - [D5 services/support/attendance policy — Arabic](docs/services-d5.md)
+- [D9 tested delivery results — Arabic](docs/d9-results.md)
 - [D8 tested delivery results — Arabic](docs/d8-results.md)
 - [D7 tested delivery results — Arabic](docs/d7-results.md)
 - [D5 tested delivery results — Arabic](docs/d5-results.md)
@@ -369,5 +393,5 @@ refuses to overwrite revisions; its source is archived as non-executable text un
 `alembic/superseded/`. D4 (room allocation and transfers) and D5 (services, complaints,
 maintenance, permissions/absences and emergency reports, with Arabic portal views) are delivered;
 D6 (notifications mailbox with event-driven delivery), D7 (daily attendance ledger with
-automatic unauthorized absences) and D8 (role-scoped officer dashboards) are delivered;
-cleaning AI (BFS/A*) follows later.
+automatic unauthorized absences), D8 (role-scoped officer dashboards) and D9 (cleaning AI with
+BFS/A* optimization) are delivered — the full remaining scope is closed.

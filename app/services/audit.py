@@ -42,6 +42,12 @@ ALLOWED_DETAILS = {
     "attendance_record_id",
     "date",
     "status",
+    # D9 cleaning AI: identifiers, algorithm and counts only.
+    "cycle_id",
+    "run_id",
+    "algorithm",
+    "task_count",
+    "assignment_id",
 }
 
 

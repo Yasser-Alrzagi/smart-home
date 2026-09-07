@@ -32,7 +32,8 @@ def _clean_d8_tables():
             "notifications", "attendance_records", "student_absences",
             "permission_requests", "emergency_reports", "service_registrations",
             "service_periods", "services", "complaints", "maintenance_requests",
-            "room_assignments", "rooms", "apartments", "floors",
+            "room_assignments", "cleaning_assignments", "cleaning_cycles",
+            "ai_optimization_runs", "rooms", "apartments", "floors",
             "applications", "application_documents", "students",
             "auth_sessions", "audit_events", "users",
         ):
