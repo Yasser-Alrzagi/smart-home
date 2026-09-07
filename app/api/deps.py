@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 
 from app.core.config import settings
@@ -10,12 +10,33 @@ from app.models.user import User
 from app.services.sessions import AuthContext, resolve_context
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login/access-token"
+    tokenUrl=f"{settings.API_V1_STR}/auth/login/access-token",
+    auto_error=False,
 )
 
 
+def get_bearer_token(request: Request, token: str | None = Depends(reusable_oauth2)) -> str:
+    """Extract the access token for API authentication.
+
+    The primary channel is the standard ``Authorization: Bearer`` header. Some
+    reverse proxies (notably the sandbox preview proxy) strip that header, so a
+    secondary channel — ``X-Auth-Token`` — is accepted as a fallback. It is
+    only read when the Authorization header is absent, never overwrites it.
+    """
+    if token:
+        return token
+    alt = request.headers.get("x-auth-token", "")
+    if alt:
+        return alt
+    raise HTTPException(
+        401,
+        "Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 def get_auth_context(
-    db: DatabaseSession, token: str = Depends(reusable_oauth2)
+    db: DatabaseSession, token: str = Depends(get_bearer_token)
 ) -> AuthContext:
     return resolve_context(db, token)
 
@@ -23,9 +44,7 @@ def get_auth_context(
 Authenticated = Annotated[AuthContext, Depends(get_auth_context)]
 
 
-def get_current_user(
-    db: DatabaseSession, token: str = Depends(reusable_oauth2)
-) -> User:
+def get_current_user(db: DatabaseSession, token: str = Depends(get_bearer_token)) -> User:
     return resolve_context(db, token).user
 
 

@@ -38,7 +38,7 @@
   function localLogout(message='') { generation++; viewEpoch++; token=null; state.me=null; state.current=null; state.profile=null; state.policy=null; state.filter=''; $('detailContent').replaceChildren(); if ($('detailDialog').open) $('detailDialog').close(); $('portal').hidden=true; $('loginView').hidden=false; $('page').replaceChildren(); $('loginError').textContent=message; }
   async function api(path, {method='GET', body, blob=false}={}) {
     const requestGeneration=generation;
-    const headers={}; if(token) headers.Authorization='Bearer '+token;
+    const headers={}; if(token){headers.Authorization='Bearer '+token;headers['X-Auth-Token']=token;}
     if(body && !(body instanceof FormData)) { headers['Content-Type']='application/json'; body=JSON.stringify(body); }
     const response=await fetch(apiBase+path,{method,headers,body,cache:'no-store',credentials:'omit'});
     if(requestGeneration!==generation) throw new Error('تغيرت الجلسة؛ تجاهلنا الاستجابة القديمة.');
@@ -74,7 +74,7 @@
     $('page').replaceChildren(h('div',{class:'empty'},'جارٍ تحميل البيانات…'));
     try { await ({dashboard,profile:profilePage,room:myRoomPage,services:servicesPage,support:supportPage,attendance:attendancePage,applications:applicationsPage,housing:housingPage,accounts:accountsPage,security:securityPage}[state.page])(); } catch(error){if(state.me && epoch===viewEpoch) $('page').replaceChildren(h('p',{class:'error'},error.message));}
   }
-  $('loginForm').addEventListener('submit',async e=>{e.preventDefault(); const submit=e.target.querySelector('button');submit.disabled=true;$('loginError').textContent=''; const form=new FormData(e.target); try{const data=await api('/auth/login/access-token',{method:'POST',body:form});token=data.access_token;generation++;state.me=await api('/auth/users/me');e.target.reset();$('loginView').hidden=true;$('portal').hidden=false;state.policy=null;await go('dashboard');}catch(error){localLogout(error.message);}finally{submit.disabled=false;}});
+  $('loginForm').addEventListener('submit',async e=>{e.preventDefault(); const submit=e.target.querySelector('button');submit.disabled=true;$('loginError').textContent=''; token=null; const form=new FormData(e.target); try{const data=await api('/auth/login/access-token',{method:'POST',body:form});token=data.access_token;generation++;state.me=await api('/auth/users/me');e.target.reset();$('loginView').hidden=true;$('portal').hidden=false;state.policy=null;await go('dashboard');}catch(error){localLogout(error.message);}finally{submit.disabled=false;}});
   $('logoutButton').addEventListener('click',async()=>{const current=generation;try{await api('/auth/logout',{method:'POST'});}catch{}if(generation===current)localLogout();});
   $('closeDialog').addEventListener('click',()=>$('detailDialog').close());
   $('detailDialog').addEventListener('close',()=>{if(!state.me)return; const refresh=state.page==='applications'?applicationsPage:state.page==='dashboard'?dashboard:null; if(refresh)refresh().catch(e=>{if(state.me)notify(e.message,true);});});
