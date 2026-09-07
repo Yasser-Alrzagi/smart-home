@@ -1,6 +1,6 @@
 # Smart Student Housing — سكن بازرعة الطلابي
 
-**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers are implemented, with a fully Arabic browser portal. Services, complaints, absences and cleaning AI are still to come.**
+**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance are implemented, with a fully Arabic browser portal. Cleaning AI is still to come.**
 
 - 27 ORM tables: domain tables, identity/security, application history, and the housing structure.
 - Identity, admission and **housing** HTTP APIs, health/readiness, and an Arabic browser portal at `/app` including a "غرفتي" student view and a full Housing Administration workspace.
@@ -58,6 +58,40 @@ Endpoints (`/api/v1`): `GET/POST /housing/floors`, `GET/POST /housing/apartments
 
 D4 adds **no migration**: the housing tables already exist since D1, and `SCHEMA_HEAD` stays at
 `d3b7a21c8f04`. Full Arabic policy and limitations: **[docs/housing-d4.md](docs/housing-d4.md)**.
+
+## D5: services, support and attendance
+
+Officers own their services and periods; students register while a period is open; complaints,
+maintenance requests, permission requests, emergency reports and the documented absence log are
+all handled through the Arabic portal at `/app`.
+
+| Area | Behavior |
+|---|---|
+| Service ownership | Each service type belongs to fixed officer roles (`activity_officer` → Activity/Internet, `food_officer` → Food, `sports_officer` → Sports), enforced on every operation; duplicate type+name is refused (409) |
+| Period lifecycle | `Upcoming` → `Open` → `Closed` → `Completed`; open/closed is the only reversible step |
+| Registration | Only while `Open`, once per period (unique), and only while seats remain; the duplicate check runs before the capacity check (409 vs 422); students cancel their own registration; officers never delete |
+| Concurrency | Named MySQL lock + `FOR UPDATE` row lock on the period: a two-thread race yields exactly `[201, 422]`, never over-capacity; the named lock is released inside the owning transaction (a stray release after rollback used to strand it on the pooled connection) |
+| Complaints | Housing Administration lifecycle `Open` → `Under Review` → `Resolved` → `Closed`; resolution text is mandatory to resolve/close; no deletion |
+| Maintenance | `Pending` → `Assigned` → `In Progress` → `Resolved` → `Closed`; a room may only be attached when it is the student's currently active assignment |
+| Permissions | Student Affairs approves/rejects (`Pending` → `Approved`/`Rejected`, student cancel before decision); approval creates a `permission` absence with the same dates |
+| Emergency reports | `Reported` → `Under Review` → `Verified` → `Closed`; an `emergency` absence is created only when the exit is verified (rule 9.2 — a report is not an absence until verified) |
+| Absence log | Built only from permissions and verified emergencies, never written directly by students |
+| Audit | `registration.*`, complaint/maintenance/permission/emergency events recorded in the same transaction as the change |
+
+Endpoints (`/api/v1`): `GET/POST /services`, `PATCH /services/{id}`, `GET/POST /service-periods`,
+`POST /service-periods/{id}/status`, `GET /service-periods/{id}/registrations`,
+`POST /service-registrations`, `GET /service-registrations/me`,
+`POST /service-registrations/{id}/cancel`, `GET/POST /complaints`, `GET /complaints/my`,
+`POST /complaints/{id}/action`, `GET/POST /maintenance`, `GET /maintenance/my`,
+`POST /maintenance/{id}/action`, `GET/POST /permissions`, `GET /permissions/my`,
+`POST /permissions/{id}/decision`, `POST /permissions/{id}/cancel`, `POST /emergency`,
+`GET /emergency/my`, `POST /emergency/{id}/action`, `GET /absences`, `GET /absences/my`.
+
+D5 adds **no migration** either: the service, complaint, maintenance, permission, emergency and
+absence tables already exist since D1, and `SCHEMA_HEAD` stays at `d3b7a21c8f04`; the
+`notifications` table also exists but its API and portal UI are still pending. Full Arabic policy
+and tested delivery: **[docs/services-d5.md](docs/services-d5.md)** and
+**[docs/d5-results.md](docs/d5-results.md)**.
 
 ## Stack and layout
 
@@ -274,6 +308,8 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 ## Project documentation
 
+- [D5 services/support/attendance policy — Arabic](docs/services-d5.md)
+- [D5 tested delivery results — Arabic](docs/d5-results.md)
 - [D4 housing policy — Arabic](docs/housing-d4.md)
 - [D3 admission policy and UI — Arabic](docs/admissions-d3.md)
 - [D3 tested delivery results — Arabic](docs/d3-results.md)
@@ -285,5 +321,6 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 Historical generator text and `_offline_head.sql` are not active migrations. The old assembler
 refuses to overwrite revisions; its source is archived as non-executable text under
-`alembic/superseded/`. Room allocation and transfers are delivered (D4); services, complaints,
-absences and cleaning AI follow later (D5).
+`alembic/superseded/`. D4 (room allocation and transfers) and D5 (services, complaints,
+maintenance, permissions/absences and emergency reports, with Arabic portal views) are delivered;
+the `notifications` API/UI and cleaning AI (BFS/A*) follow later.
