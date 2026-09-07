@@ -84,11 +84,16 @@
   async function fetchProfile(){try {state.profile=await api('/students/me');}catch(error){if(error.status===404)state.profile=null;else throw error;}return state.profile;}
   function stat(label,value,foot){return h('div',{class:'stat'},h('span',{class:'stat-label'},label),h('div',{class:'stat-value'},value),h('small',{},foot));}
   function renderPage(name, epoch, ...nodes) { if(state.me && state.page===name && viewEpoch===epoch) $('page').replaceChildren(...nodes); }
+  async function officerDashboard(epoch){if(state.page!=='dashboard'||!state.me)return;
+    const d=await api('/dashboards/me');
+    const cards=h('div',{class:'cards'},...d.stats.map(s=>stat(s.label,s.value,'')));
+    const attention=d.attention.length?panel('يحتاج انتباهك',dataTable(['البند','العدد'],d.attention.map(a=>[a.label,a.value]))):null;
+    const latest=d.latest.length?panel('الأحدث',dataTable(['البند','الحالة','الوقت'],d.latest.map(l=>[l.title,l.status?tr(l.status):'—',l.created_at?date(l.created_at):'—']))):empty('لا نشاط بعد','ستظهر هنا أحدث العناصر المرتبطة بدورك.');
+    renderPage('dashboard',epoch,heading('مرحباً، '+state.me.username,'نظرة سريعة على ما يتطلب انتباهك في دورك.'),cards,attention,latest,panel('إجراءات سريعة',h('div',{class:'actions'},...d.actions.map(a=>button(a.label,()=>go(a.page),'primary')))));
+  }
   async function dashboard(){const epoch=viewEpoch;if(state.page!=='dashboard'||!state.me)return;
+    if(state.me.role!=='Student')return officerDashboard(epoch);
     const user=state.me;
-    if(!['Student','Student Affairs','Housing Administration'].includes(user.role)){
-      renderPage('dashboard',epoch,heading('مرحباً، '+user.username,'حسابك ومساحة العمل المتاحة لدورك'),panel('مساحة العمل',h('p',{class:'muted'},user.role==='System Administrator'?'أنشئ حسابات الطلاب والموظفين من إدارة الحسابات. قرارات السكن خاصة بشؤون الطلاب وإدارة السكن.':'خدمات هذا الدور ستُضاف في دفعات لاحقة. يمكنك الآن إدارة حسابك وجلساتك.'),button(user.role==='System Administrator'?'إدارة الحسابات':'الأمان والجلسات',()=>go(user.role==='System Administrator'?'accounts':'security'),'primary')));return;
-    }
     const p=await policy(); const list=await api('/applications?limit=5');
     const profile=user.role==='Student'?await fetchProfile():null;
     const latest=list.items[0]?await api('/applications/'+list.items[0].application_id):null;

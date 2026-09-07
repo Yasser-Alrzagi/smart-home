@@ -20,6 +20,7 @@ from app.api.v1 import (
     attendance,
     notifications,
     daily_attendance,
+    dashboards,
 )
 from app.web.routes import router as web_router
 from app.core.body_limit import BodyLimitMiddleware
@@ -112,6 +113,7 @@ app.include_router(support.router, prefix=settings.API_V1_STR)
 app.include_router(attendance.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(daily_attendance.router, prefix=settings.API_V1_STR)
+app.include_router(dashboards.router, prefix=settings.API_V1_STR)
 app.include_router(web_router)
 
 

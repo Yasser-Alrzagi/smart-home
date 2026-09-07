@@ -1,6 +1,6 @@
 # Smart Student Housing — سكن بازرعة الطلابي
 
-**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance + D6 notifications + D7 daily attendance ledger are implemented, with a fully Arabic browser portal. Officer dashboards and cleaning AI are still to come.**
+**D1 foundation + D2 identity + D3 two-stage admissions + D4 room allocation and transfers + D5 services, support and attendance + D6 notifications + D7 daily attendance ledger + D8 role-scoped officer dashboards are implemented, with a fully Arabic browser portal. Cleaning AI (BFS/A*) is still to come.**
 
 - 27 ORM tables: domain tables, identity/security, application history, and the housing structure.
 - Identity, admission and **housing** HTTP APIs, health/readiness, and an Arabic browser portal at `/app` including a "غرفتي" student view and a full Housing Administration workspace.
@@ -113,6 +113,25 @@ Endpoints (`/api/v1`): `POST /attendance/daily`, `GET /attendance/daily?record_d
 `GET /attendance/my-ledger`, `GET /attendance/students?q=`.
 Full Arabic policy and tested delivery: **[docs/attendance-daily-d7.md](docs/attendance-daily-d7.md)**
 and **[docs/d7-results.md](docs/d7-results.md)**.
+
+## D8: officer dashboards
+
+One read-only summary per role at `GET /dashboards/me`: overall numbers, items needing
+attention, the latest items that role owns, and quick portal actions. No writes, no audit,
+no schema change; the same fixed role→permission matrix decides what each role sees.
+
+| Role | Sees |
+|---|---|
+| Student Affairs | applications under review, pending permission requests, pending emergency reports |
+| Housing Administration | rooms, occupied, awaiting assignment, open complaints, today's absent (D7), ready-for-decision queue |
+| Maintenance Officer | pending/assigned/in-progress/open maintenance requests |
+| Activity/Food/Sports Officers | owned services, open/upcoming periods, total registrations |
+| Cleaning Officer | cleaning cycles by status and pending assignments |
+| System Administrator | accounts, active accounts, must-change-password, active sessions |
+
+Endpoints: `GET /api/v1/dashboards/me`.
+Full Arabic policy and tested delivery: **[docs/dashboards-d8.md](docs/dashboards-d8.md)**
+and **[docs/d8-results.md](docs/d8-results.md)**.
 
 ## Stack and layout
 
@@ -329,9 +348,11 @@ The assistant has not run the new D3 workflow on GitHub or pushed this branch.
 
 ## Project documentation
 
+- [D8 dashboard policy — Arabic](docs/dashboards-d8.md)
 - [D7 daily attendance policy — Arabic](docs/attendance-daily-d7.md)
 - [D6 notification policy — Arabic](docs/notifications-d6.md)
 - [D5 services/support/attendance policy — Arabic](docs/services-d5.md)
+- [D8 tested delivery results — Arabic](docs/d8-results.md)
 - [D7 tested delivery results — Arabic](docs/d7-results.md)
 - [D5 tested delivery results — Arabic](docs/d5-results.md)
 - [D4 housing policy — Arabic](docs/housing-d4.md)
@@ -347,6 +368,6 @@ Historical generator text and `_offline_head.sql` are not active migrations. The
 refuses to overwrite revisions; its source is archived as non-executable text under
 `alembic/superseded/`. D4 (room allocation and transfers) and D5 (services, complaints,
 maintenance, permissions/absences and emergency reports, with Arabic portal views) are delivered;
-D6 (notifications mailbox with event-driven delivery) and D7 (daily attendance ledger with
-automatic unauthorized absences) are delivered; officer dashboards and cleaning AI (BFS/A*)
-follow later.
+D6 (notifications mailbox with event-driven delivery), D7 (daily attendance ledger with
+automatic unauthorized absences) and D8 (role-scoped officer dashboards) are delivered;
+cleaning AI (BFS/A*) follows later.
