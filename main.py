@@ -28,6 +28,16 @@ from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import AppError
 from app.core.schema_version import SCHEMA_HEAD
 from app.core.config import ensure_directories, settings
+
+import mimetypes
+
+# Windows registry quirk (XAMPP-era): ".js" is often registered as
+# text/plain. The browser then refuses to execute portal.js with "strict
+# MIME type checking", leaving the login form in its default GET behavior.
+# Force the correct MIME types before the static file server guesses them.
+mimetypes.init()
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/javascript", ".mjs")
 from app.core.database import engine
 
 
