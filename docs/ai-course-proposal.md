@@ -77,15 +77,18 @@ pytest (unit + integration; **524 tests passing**).
 
 ## 8. Team members
 
-| Name | ID | Role / contribution |
+| Name | ID | AI role / contribution |
 |---|---|---|
-| ياسر عبدالسلام الرزاقي | (ID) | A\* implementation (heuristic, admissibility & optimality), evaluation & benchmarks, algorithm unit tests, problem/algorithm justification |
-| شهاب الدين فهد رعدان | (ID) | BFS implementation, data collection & preprocessing, MySQL schema, AI REST + UI integration, integration tests |
+| ياسر عبدالسلام الرزاقي | (ID) | Problem & algorithm justification, **A\*** implementation (admissible heuristic, optimality), evaluation & benchmarks, A\* unit tests, OOP design of the AI module |
+| شهاب الدين فهد رعدان | (ID) | Data collection & preprocessing, **BFS** implementation, AI database schema (cleaning cycle/tasks — DB integration req. #10), AI user interface (req. #5), BFS & integration tests |
 
 *A group project (2 members, max allowed 3): two different AI algorithms are
-required — implemented here: BFS and A\*. All code is explained and defended
-during the final demonstration. Detailed task split: `docs/course-ai.md`
-(section «توزيع مهام الذكاء الاصطناعي»).*
+required — implemented here: BFS and A\*. The split covers AI-course tasks only;
+the platform/system tasks (web portal, housing, accounts…) belong to the
+Advanced Programming project and are distributed in
+`docs/course-advanced-programming.md`. All code is explained and defended
+during the final demonstration — detailed AI split: `docs/course-ai.md`
+(section «توزيع مهام الذكاء الاصطناعي فقط»).*
 
 ## 9. Brief implementation plan
 
