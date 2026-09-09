@@ -22,12 +22,14 @@ from app.api.v1 import (
     daily_attendance,
     dashboards,
     cleaning,
+    reports,
 )
 from app.web.routes import router as web_router
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import AppError
 from app.core.schema_version import SCHEMA_HEAD
 from app.core.config import ensure_directories, settings
+from app.core.database import engine
 
 import mimetypes
 
@@ -38,7 +40,6 @@ import mimetypes
 mimetypes.init()
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/javascript", ".mjs")
-from app.core.database import engine
 
 
 @asynccontextmanager
@@ -126,6 +127,7 @@ app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(daily_attendance.router, prefix=settings.API_V1_STR)
 app.include_router(dashboards.router, prefix=settings.API_V1_STR)
 app.include_router(cleaning.router, prefix=settings.API_V1_STR)
+app.include_router(reports.router, prefix=settings.API_V1_STR)
 app.include_router(web_router)
 
 
