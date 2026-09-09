@@ -79,12 +79,13 @@ pytest (unit + integration; **524 tests passing**).
 
 | Name | ID | Role / contribution |
 |---|---|---|
-| ياسر عبدالسلام الرزاقي | (ID) | Search algorithms (BFS & A\*), evaluation/benchmarks, API integration |
-| شهاب الدين فهد رعدان | (ID) | Data model (MySQL schema), web portal UI, desktop client, documentation |
+| ياسر عبدالسلام الرزاقي | (ID) | A\* implementation (heuristic, admissibility & optimality), evaluation & benchmarks, algorithm unit tests, problem/algorithm justification |
+| شهاب الدين فهد رعدان | (ID) | BFS implementation, data collection & preprocessing, MySQL schema, AI REST + UI integration, integration tests |
 
 *A group project (2 members, max allowed 3): two different AI algorithms are
 required — implemented here: BFS and A\*. All code is explained and defended
-during the final demonstration.*
+during the final demonstration. Detailed task split: `docs/course-ai.md`
+(section «توزيع مهام الذكاء الاصطناعي»).*
 
 ## 9. Brief implementation plan
 
