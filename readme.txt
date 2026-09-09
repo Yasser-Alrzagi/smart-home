@@ -64,5 +64,6 @@ docs/course-advanced-programming.md  Advanced Programming compliance
 
 
 ----
-GROUP NAMES
-(Write the group name and the members here — required by the course submission)
+GROUP NAMES (as required by the course submission)
+1. ياسر عبدالسلام الرزاقي
+2. شهاب الدين فهد رعدان
