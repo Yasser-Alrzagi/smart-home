@@ -168,6 +168,23 @@ unit of work commits before a successful response is sent, and rolls back the co
 operation on failure. Repositories do not commit partial operations. Do not reuse the
 request session in background tasks or streaming responses.
 
+## Second platform — desktop client (Tkinter)
+
+The portal is platform one (Web); `desktop_client/` is platform two (Desktop).
+Both talk to the same REST API and share the same database — see
+[desktop_client/README.md](desktop_client/README.md). Runs with stdlib only:
+
+```bat
+python desktop_client\main.py --api http://127.0.0.1:8000
+```
+
+## Reports / export API (JSON + XML)
+
+`/api/v1/reports/*` returns JSON (default) or XML with `?format=xml`:
+`GET /reports/overview`, `GET /reports/users` (System Administrator),
+`GET /reports/applications` (staff roles). Full matrix:
+[docs/course-advanced-programming.md](docs/course-advanced-programming.md).
+
 ## Local setup
 
 Create a fresh virtual environment. Runtime dependencies are exact pins with hashes:
