@@ -62,6 +62,7 @@ docs/cleaning-d9.md         Cleaning AI policy and design
 docs/d9-results.md          BFS vs A* evaluation results
 docs/course-advanced-programming.md  Advanced Programming compliance
 
-TEAM
+
 ----
-(team member names and IDs)
+GROUP NAMES
+(Write the group name and the members here — required by the course submission)
